@@ -1,0 +1,27 @@
+{
+    "name": "معمل لهيب للخبز",
+    "short_name": "لهيب",
+    "description": "منصة مبيعات وتحصيل معمل لهيب للخبز",
+    "lang": "ar",
+    "dir": "rtl",
+    "start_url": "/dashboard",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#fdfbf7",
+    "theme_color": "#a85a12",
+    "icons": [
+        {
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-maskable.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        }
+    ]
+}

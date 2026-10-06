@@ -1,0 +1,15 @@
+---
+# cPanel Git deployment: copies the repo to the app directory and refreshes
+# Laravel. Adjust DEPLOYPATH (and the php binary) to the account's paths.
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/USER/laheeb
+    - export PHP_BIN=/usr/local/bin/php
+    - /bin/cp -R app bootstrap config database lang public resources routes composer.json composer.lock artisan $DEPLOYPATH/
+    - /bin/cp .cpanel.yml $DEPLOYPATH/ 2>/dev/null || true
+    - cd $DEPLOYPATH && $PHP_BIN artisan down || true
+    - cd $DEPLOYPATH && $PHP_BIN artisan migrate --force
+    - cd $DEPLOYPATH && $PHP_BIN artisan config:cache
+    - cd $DEPLOYPATH && $PHP_BIN artisan route:cache
+    - cd $DEPLOYPATH && $PHP_BIN artisan view:cache
+    - cd $DEPLOYPATH && $PHP_BIN artisan up
