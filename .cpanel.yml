@@ -5,7 +5,7 @@
 deployment:
   tasks:
     - export APPDIR=/home/laheebsa/repositories/Laheeb
-    - export PHP_BIN=/usr/local/bin/php
+    - export PHP_BIN=/opt/cpanel/ea-php83/root/usr/bin/php
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan migrate --force || echo "skip migrate (no .env yet)"'
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan config:cache || true'
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan route:cache || true'
