@@ -166,6 +166,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('lines/{line}', [PayrollController::class, 'updateLine'])->name('lines.update');
         Route::post('{run}/review', [PayrollController::class, 'review'])->name('review');
         Route::post('{run}/approve', [PayrollController::class, 'approve'])->name('approve');
+        Route::post('{run}/sync', [PayrollController::class, 'syncEmployees'])->name('sync');
         Route::post('{run}/reopen', [PayrollController::class, 'reopen'])->name('reopen');
         Route::post('{run}/pay', [PayrollController::class, 'pay'])->name('pay');
         Route::delete('{run}', [PayrollController::class, 'destroy'])->name('destroy');

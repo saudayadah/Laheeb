@@ -101,6 +101,15 @@ class PayrollController extends Controller
         return back()->with('success', __('payroll.approved'));
     }
 
+    public function syncEmployees(Request $request, PayrollRun $run): RedirectResponse
+    {
+        abort_unless($request->user()->can('payroll.manage'), 403);
+
+        $added = $this->service->syncEmployees($run, $request->user());
+
+        return back()->with('success', __('payroll.synced', ['count' => $added]));
+    }
+
     public function reopen(Request $request, PayrollRun $run): RedirectResponse
     {
         abort_unless($request->user()->can('payroll.manage'), 403);

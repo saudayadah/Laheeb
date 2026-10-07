@@ -234,3 +234,26 @@ test('an unpaid run can be deleted, a paid one cannot', function () {
 
     expect(fn () => $this->service->deleteRun($run2->refresh(), $this->owner))->toThrow(ValidationException::class);
 });
+
+test('employees hired after the run was created can be pulled in', function () {
+    Employee::factory()->create(['basic_salary' => '3000.00']);
+    $run = $this->service->createRun('2026-10', $this->owner);
+    expect($run->lines()->count())->toBe(1);
+
+    $late = Employee::factory()->create(['basic_salary' => '2500.00']);
+
+    expect($this->service->syncEmployees($run, $this->owner))->toBe(1)
+        ->and($run->lines()->count())->toBe(2)
+        ->and((string) $run->lines()->where('employee_id', $late->id)->first()->net)->toBe('2500.00');
+
+    // Running it again adds nothing.
+    expect($this->service->syncEmployees($run, $this->owner))->toBe(0);
+
+    // A paid run refuses.
+    $this->service->review($run, $this->owner);
+    $this->service->approve($run, $this->owner);
+    $methods = $run->lines()->pluck('id')->mapWithKeys(fn ($id) => [$id => 'bank'])->all();
+    $this->service->pay($run, $methods, $this->owner);
+
+    expect(fn () => $this->service->syncEmployees($run->refresh(), $this->owner))->toThrow(ValidationException::class);
+});

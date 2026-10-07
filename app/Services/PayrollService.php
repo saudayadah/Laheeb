@@ -177,27 +177,66 @@ class PayrollService
             $run = PayrollRun::create(['period' => $period, 'created_by' => $user->id]);
 
             foreach (Employee::where('active', true)->orderBy('name_ar')->get() as $employee) {
-                $advanceDue = Money::sum(
-                    $employee->advances()->where('status', 'active')->get()->map->dueThisMonth(),
-                );
-                $chargesDue = Money::sum(
-                    $employee->charges()->where('status', 'approved')->get()->map->remaining(),
-                );
-
-                $line = new PayrollLine([
-                    'employee_id' => $employee->id,
-                    'basic' => (string) $employee->basic_salary,
-                    'advance_recovery' => $advanceDue,
-                    'charges_recovery' => $chargesDue,
-                ]);
-                $this->recalculate($line);
-                $run->lines()->save($line);
+                $this->addLineFor($run, $employee);
             }
 
             activity()->causedBy($user)->performedOn($run)->log('payroll.created');
 
             return $run;
         });
+    }
+
+    /**
+     * Pull in active employees hired (or activated) AFTER the run was
+     * created, so an early-created run never has to be thrown away.
+     * Returns how many lines were added.
+     */
+    public function syncEmployees(PayrollRun $run, User $user): int
+    {
+        if (! $run->isEditable()) {
+            throw ValidationException::withMessages(['run' => __('payroll.locked')]);
+        }
+
+        return DB::transaction(function () use ($run, $user) {
+            $existing = $run->lines()->pluck('employee_id')->flip();
+            $added = 0;
+
+            foreach (Employee::where('active', true)->orderBy('name_ar')->get() as $employee) {
+                if (isset($existing[$employee->id])) {
+                    continue;
+                }
+                $this->addLineFor($run, $employee);
+                $added++;
+            }
+
+            if ($added > 0) {
+                activity()->causedBy($user)->performedOn($run)
+                    ->withProperties(['added' => $added])
+                    ->log('payroll.synced');
+            }
+
+            return $added;
+        });
+    }
+
+    /** One prefilled line: basic salary plus the dues the ledger already knows. */
+    private function addLineFor(PayrollRun $run, Employee $employee): void
+    {
+        $advanceDue = Money::sum(
+            $employee->advances()->where('status', 'active')->get()->map->dueThisMonth(),
+        );
+        $chargesDue = Money::sum(
+            $employee->charges()->where('status', 'approved')->get()->map->remaining(),
+        );
+
+        $line = new PayrollLine([
+            'employee_id' => $employee->id,
+            'basic' => (string) $employee->basic_salary,
+            'advance_recovery' => $advanceDue,
+            'charges_recovery' => $chargesDue,
+        ]);
+        $this->recalculate($line);
+        $run->lines()->save($line);
     }
 
     /** Net = basic + overtime + allowance + additions - absence - deductions - recoveries, floored at zero. */

@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { fmtAmount } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, Link, router } from '@inertiajs/react';
-import { BadgeCheck, CheckCheck, HandCoins, Printer, ReceiptText, Undo2 } from 'lucide-react';
+import { BadgeCheck, CheckCheck, HandCoins, Printer, ReceiptText, Undo2, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export interface PayrollLineData {
@@ -64,6 +64,11 @@ export default function PayrollShow({ run, canApprove }: { run: PayrollRunData; 
                                     <Printer className="size-4" /> {t('payroll.sheet')}
                                 </Link>
                             </Button>
+                            {editable && (
+                                <Button variant="outline" size="sm" onClick={() => action('sync')}>
+                                    <UserPlus className="size-4" /> {t('payroll.sync_employees')}
+                                </Button>
+                            )}
                             {run.status === 'draft' && (
                                 <Button size="sm" onClick={() => action('review')}>
                                     <BadgeCheck className="size-4" /> {t('payroll.review')}
@@ -95,6 +100,12 @@ export default function PayrollShow({ run, canApprove }: { run: PayrollRunData; 
                         {t('payroll.total_net')} ({t('common.currency')})
                     </div>
                 </div>
+
+                {run.lines.length === 0 && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                        {t('payroll.no_lines')}
+                    </div>
+                )}
 
                 <div className="overflow-auto rounded-xl border">
                     <table className="w-full border-separate border-spacing-0 text-sm">
