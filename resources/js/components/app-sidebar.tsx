@@ -2,7 +2,8 @@ import { NavMain, type NavSection } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useCan, useTrans } from '@/lib/i18n';
-import { Link } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import {
     BadgeDollarSign,
     BarChart3,
@@ -16,24 +17,26 @@ import {
     HandCoins,
     LayoutGrid,
     Lock,
+    Mail,
     MapPinned,
     Package,
     PiggyBank,
     ReceiptText,
     Scale,
     Settings2,
+    ShoppingBasket,
     Store,
     Truck,
     UsersRound,
     Wallet,
     Warehouse,
-    Wheat,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
     const { t, locale } = useTrans();
     const can = useCan();
+    const { appVersion } = usePage<SharedData>().props;
 
     const sections: NavSection[] = [
         {
@@ -81,10 +84,11 @@ export function AppSidebar() {
                 ...(can('customers.view') ? [{ title: t('nav.customers'), url: '/customers', icon: Store }] : []),
                 ...(can('customers.view') ? [{ title: t('nav.groups'), url: '/groups', icon: FolderTree }] : []),
                 ...(can('customers.view') ? [{ title: t('nav.routes'), url: '/delivery-routes', icon: MapPinned }] : []),
-                ...(can('products.view') ? [{ title: t('nav.products'), url: '/products', icon: Wheat }] : []),
+                ...(can('products.view') ? [{ title: t('nav.products'), url: '/products', icon: ShoppingBasket }] : []),
                 ...(can('imports.run') ? [{ title: t('nav.imports'), url: '/imports', icon: FileUp }] : []),
                 ...(can('users.manage') ? [{ title: t('nav.users'), url: '/users', icon: UsersRound }] : []),
                 ...(can('settings.manage') ? [{ title: t('nav.settings'), url: '/settings/bakery', icon: Settings2 }] : []),
+                ...(can('settings.manage') ? [{ title: t('nav.mail'), url: '/settings/mail', icon: Mail }] : []),
             ],
         },
     ];
@@ -108,6 +112,9 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <div className="text-sidebar-foreground/50 px-2 text-center text-[10px] tabular-nums group-data-[collapsible=icon]:hidden" dir="ltr">
+                    {t('common.version')} {appVersion}
+                </div>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

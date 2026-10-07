@@ -33,6 +33,7 @@ export interface NavItem {
 
 export interface SharedData {
     name: string;
+    appVersion: string;
     locale: 'ar' | 'en';
     translations: Record<string, string>;
     auth: Auth;

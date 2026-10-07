@@ -1,6 +1,8 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler } from 'react';
+
+import { type SharedData } from '@/types';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -24,6 +26,7 @@ interface LoginProps {
 
 export default function Login({ status, canResetPassword }: LoginProps) {
     const { t } = useTrans();
+    const { appVersion } = usePage<SharedData>().props;
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         email: '',
         password: '',
@@ -101,6 +104,10 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     </Button>
                 </div>
             </form>
+
+            <div className="text-muted-foreground text-center text-xs tabular-nums" dir="ltr">
+                {t('common.version')} {appVersion}
+            </div>
         </AuthLayout>
     );
 }

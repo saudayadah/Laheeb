@@ -3,13 +3,37 @@ import AppLayout from '@/layouts/app-layout';
 import { fmtAmount, fmtInt } from '@/lib/format';
 import { useCan, useTrans } from '@/lib/i18n';
 import { Head, Link } from '@inertiajs/react';
-import { CalendarDays, FileText, HandCoins, Scale, Truck } from 'lucide-react';
+import {
+    AlarmClock,
+    BadgeDollarSign,
+    CalendarDays,
+    CalendarOff,
+    Car,
+    CheckCircle2,
+    FileText,
+    HandCoins,
+    Package,
+    PiggyBank,
+    Scale,
+    ShieldAlert,
+    Truck,
+    Wallet,
+    type LucideIcon,
+} from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface TrendPoint {
     date: string;
     label: string;
     total: number;
+}
+
+interface AttentionItem {
+    key: string;
+    count: number;
+    amount?: string;
+    href: string;
+    tone: 'red' | 'amber' | 'blue';
 }
 
 interface DashboardProps {
@@ -25,9 +49,10 @@ interface DashboardProps {
         cash_box: string;
     } | null;
     stats: { customers: number; orders_today: number; invoices_today: number };
+    attention: AttentionItem[] | null;
 }
 
-export default function Dashboard({ money, stats }: DashboardProps) {
+export default function Dashboard({ money, stats, attention }: DashboardProps) {
     const { t } = useTrans();
     const can = useCan();
 
@@ -50,6 +75,8 @@ export default function Dashboard({ money, stats }: DashboardProps) {
                             />
                             <BigCard label={t('dashboard.custody')} value={money.custody} />
                         </div>
+
+                        {attention !== null && <AttentionPanel items={attention} />}
 
                         {/* Today's sales split */}
                         <div>
@@ -93,6 +120,63 @@ export default function Dashboard({ money, stats }: DashboardProps) {
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+const ATTENTION_ICONS: Record<string, LucideIcon> = {
+    overdue_invoices: AlarmClock,
+    over_limit: ShieldAlert,
+    pending_expenses: Wallet,
+    pending_advances: PiggyBank,
+    unpaid_payroll: BadgeDollarSign,
+    low_materials: Package,
+    vehicles_due: Car,
+    overdue_leaves: CalendarOff,
+    unconfirmed_orders: CalendarDays,
+};
+
+const ATTENTION_TONES: Record<AttentionItem['tone'], string> = {
+    red: 'text-red-600 dark:text-red-400',
+    amber: 'text-amber-700 dark:text-amber-400',
+    blue: 'text-sky-700 dark:text-sky-400',
+};
+
+/** The owner's morning checklist: everything waiting for a decision, each row a link. */
+function AttentionPanel({ items }: { items: AttentionItem[] }) {
+    const { t } = useTrans();
+
+    return (
+        <div className="rounded-xl border">
+            <h2 className="border-b px-4 py-3 text-sm font-semibold">{t('dashboard.attention')}</h2>
+            {items.length === 0 ? (
+                <div className="flex items-center gap-2 px-4 py-4 text-sm text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    {t('dashboard.attention_clear')}
+                </div>
+            ) : (
+                <ul className="divide-y">
+                    {items.map((item) => {
+                        const Icon = ATTENTION_ICONS[item.key] ?? AlarmClock;
+                        return (
+                            <li key={item.key}>
+                                <Link href={item.href} className="hover:bg-accent flex items-center gap-3 px-4 py-2.5 transition-colors">
+                                    <Icon className={`size-4 shrink-0 ${ATTENTION_TONES[item.tone]}`} />
+                                    <span className="flex-1 text-sm">{t(`dashboard.attn.${item.key}`)}</span>
+                                    {item.amount && (
+                                        <span className={`text-sm font-semibold tabular-nums ${ATTENTION_TONES[item.tone]}`}>
+                                            {fmtAmount(item.amount)}
+                                        </span>
+                                    )}
+                                    <span className="bg-muted text-foreground min-w-7 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums">
+                                        {fmtInt(item.count)}
+                                    </span>
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+        </div>
     );
 }
 

@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
 
         return array_merge(parent::share($request), [
             'name' => config('app.name'),
+            'appVersion' => $this->appVersion(),
             'locale' => app()->getLocale(),
             'translations' => fn () => $this->translations(app()->getLocale()),
             'auth' => [
@@ -58,6 +59,14 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
         ]);
+    }
+
+    /** Read once per request from the VERSION file so a deploy is instantly visible. */
+    private function appVersion(): string
+    {
+        $raw = @file_get_contents(base_path('VERSION'));
+
+        return $raw === false ? 'dev' : trim($raw);
     }
 
     private function translations(string $locale): array

@@ -25,6 +25,12 @@ class AppSettings
         'default_credit_days' => 30,
         'expense_approval_threshold' => '500',
         'advance_max_multiple' => '2',
+        // Outgoing mail (set from the settings screen; password stored encrypted).
+        'mail_host' => '',
+        'mail_port' => '465',
+        'mail_username' => '',
+        'mail_password' => '',
+        'mail_from_name' => '',
     ];
 
     public static function all(): array

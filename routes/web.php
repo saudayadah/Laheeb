@@ -16,6 +16,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MailSettingsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PosController;
@@ -194,6 +195,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/bakery', [BakerySettingsController::class, 'edit'])->name('settings.bakery.edit');
     Route::patch('settings/bakery', [BakerySettingsController::class, 'update'])->name('settings.bakery.update');
+
+    Route::get('settings/mail', [MailSettingsController::class, 'edit'])->name('settings.mail.edit');
+    Route::patch('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+    Route::post('settings/mail/test', [MailSettingsController::class, 'test'])
+        ->middleware('throttle:5,1')
+        ->name('settings.mail.test');
 
     Route::prefix('imports')->name('imports.')->group(function () {
         $types = ImporterRegistry::types();

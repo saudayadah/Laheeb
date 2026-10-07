@@ -35,7 +35,9 @@ class Employee extends Model
     protected function iqamaNumber(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value) => $value === null ? null : Crypt::decryptString($value),
+            // A rotated APP_KEY must degrade to "re-enter the number",
+            // never crash every staff screen with a 500.
+            get: fn (?string $value) => $value === null ? null : rescue(fn () => Crypt::decryptString($value), null, false),
             set: fn (?string $value) => $value === null || $value === '' ? null : Crypt::encryptString($value),
         );
     }

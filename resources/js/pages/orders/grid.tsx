@@ -6,7 +6,7 @@ import { fmtInt, fmtPrice } from '@/lib/format';
 import { postJson } from '@/lib/http';
 import { useCan, useTrans } from '@/lib/i18n';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Copy, History, Printer, Repeat } from 'lucide-react';
+import { CalendarDays, CheckCheck, ChevronLeft, ChevronRight, Copy, History, Printer, Repeat, Search } from 'lucide-react';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 interface GridProduct {
@@ -52,17 +52,40 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
     const valuesRef = useRef<Record<string, string>>(Object.fromEntries(Object.entries(cells).map(([k, v]) => [k, String(v)])));
     const [version, setVersion] = useState(0);
     const [resetCounter, setResetCounter] = useState(0);
+    const [query, setQuery] = useState('');
+    const [pasteError, setPasteError] = useState(false);
 
     const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
     const confirmed = useMemo(() => new Set(confirmedCustomerIds), [confirmedCustomerIds]);
 
     const allCustomers = useMemo(() => routeGroups.flatMap((g) => g.customers), [routeGroups]);
 
+    // Quick client-side customer filter; quantities and totals always cover the whole day.
+    const visibleGroups = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (q === '') return routeGroups;
+
+        return routeGroups
+            .map((g) => ({ ...g, customers: g.customers.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)) }))
+            .filter((g) => g.customers.length > 0);
+    }, [routeGroups, query]);
+
+    // Navigation and paste operate on what the user actually SEES, so a
+    // multi-row paste while filtering never lands on hidden rows.
+    const visibleCustomers = useMemo(() => visibleGroups.flatMap((g) => g.customers), [visibleGroups]);
+
     const keyToPos = useMemo(() => {
         const map = new Map<string, [number, number]>();
-        allCustomers.forEach((c, r) => products.forEach((p, col) => map.set(keyOf(c.id, p.id), [r, col])));
+        visibleCustomers.forEach((c, r) => products.forEach((p, col) => map.set(keyOf(c.id, p.id), [r, col])));
         return map;
-    }, [allCustomers, products]);
+    }, [visibleCustomers, products]);
+
+    // Memoized cells keep their first callbacks; these refs keep those
+    // callbacks pointed at the CURRENT visible rows after every filter change.
+    const visibleCustomersRef = useRef(visibleCustomers);
+    visibleCustomersRef.current = visibleCustomers;
+    const keyToPosRef = useRef(keyToPos);
+    keyToPosRef.current = keyToPos;
 
     const bump = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -79,33 +102,35 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
 
     const focusCell = useCallback(
         (row: number, col: number) => {
-            if (row < 0 || row >= allCustomers.length || col < 0 || col >= products.length) return;
-            const key = keyOf(allCustomers[row].id, products[col].id);
+            const customers = visibleCustomersRef.current;
+            if (row < 0 || row >= customers.length || col < 0 || col >= products.length) return;
+            const key = keyOf(customers[row].id, products[col].id);
             const input = inputRefs.current.get(key);
             if (input) {
                 input.focus();
                 input.select();
             }
         },
-        [allCustomers, products],
+        [products],
     );
 
     const navigate = useCallback(
         (cellKey: string, dRow: number, dCol: number) => {
-            const pos = keyToPos.get(cellKey);
+            const pos = keyToPosRef.current.get(cellKey);
             if (!pos) return;
             // In RTL the visual left/right arrows are mirrored.
             const flip = locale === 'ar' ? -1 : 1;
             focusCell(pos[0] + dRow, pos[1] + dCol * flip);
         },
-        [keyToPos, focusCell, locale],
+        [focusCell, locale],
     );
 
     const pasteBlock = useCallback(
         async (cellKey: string, text: string) => {
-            const pos = keyToPos.get(cellKey);
+            const pos = keyToPosRef.current.get(cellKey);
             if (!pos) return;
 
+            const customers = visibleCustomersRef.current;
             const rows = text
                 .replace(/\r/g, '')
                 .split('\n')
@@ -116,28 +141,44 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                 line.split('\t').forEach((raw, dc) => {
                     const r = pos[0] + dr;
                     const c = pos[1] + dc;
-                    if (r >= allCustomers.length || c >= products.length) return;
-                    const customer = allCustomers[r];
+                    if (r >= customers.length || c >= products.length) return;
+                    const customer = customers[r];
                     if (confirmed.has(customer.id)) return;
-                    const qty = parseInt(raw.trim().replace(/[^\d]/g, ''), 10);
+
+                    // Accept Arabic-Indic digits; a token with letters but no
+                    // digit at all is skipped instead of silently clearing.
+                    const normalized = raw
+                        .trim()
+                        .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+                        .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+                    if (normalized !== '' && !/\d/.test(normalized)) return;
+
+                    const qty = parseInt(normalized.replace(/[^\d]/g, ''), 10);
                     const value = Number.isNaN(qty) || qty <= 0 ? 0 : qty;
-                    const key = keyOf(customer.id, products[c].id);
-                    valuesRef.current[key] = value > 0 ? String(value) : '';
                     updates.push({ customer_id: customer.id, product_id: products[c].id, qty: value });
                 });
             });
 
             if (updates.length === 0) return;
 
+            // Save first, then show: a failed paste must not pretend to be saved.
+            try {
+                for (let i = 0; i < updates.length; i += 400) {
+                    await postJson(route('orders.cells'), { date, cells: updates.slice(i, i + 400) });
+                }
+            } catch {
+                setPasteError(true);
+                return;
+            }
+
+            setPasteError(false);
+            for (const u of updates) {
+                valuesRef.current[keyOf(u.customer_id, u.product_id)] = u.qty > 0 ? String(u.qty) : '';
+            }
             setResetCounter((n) => n + 1);
             bump();
-
-            // Chunk large pastes to stay under the request limit.
-            for (let i = 0; i < updates.length; i += 400) {
-                await postJson(route('orders.cells'), { date, cells: updates.slice(i, i + 400) });
-            }
         },
-        [keyToPos, allCustomers, products, confirmed, date, bump],
+        [products, confirmed, date, bump],
     );
 
     const registerRef = useCallback((key: string, el: HTMLInputElement | null) => {
@@ -161,10 +202,6 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
         }
         return { byCustomer, byProduct, grand };
     }, [version]);
-
-    const routeTotals = useMemo(() => {
-        return routeGroups.map((g) => g.customers.reduce((sum, c) => sum + (totals.byCustomer[c.id] ?? 0), 0));
-    }, [routeGroups, totals]);
 
     const customersWithOrders = useMemo(() => allCustomers.filter((c) => (totals.byCustomer[c.id] ?? 0) > 0).length, [allCustomers, totals]);
 
@@ -226,6 +263,16 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                         <Repeat className="size-4" /> {t('orders.apply_standing')}
                     </Button>
                     <span className="flex-1" />
+                    <div className="relative">
+                        <Search className="text-muted-foreground absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
+                        <Input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder={t('orders.search_customer')}
+                            aria-label={t('orders.search_customer')}
+                            className="h-9 w-44 ps-8"
+                        />
+                    </div>
                     {can('invoices.manage') && (
                         <Button size="sm" onClick={() => router.post(route('invoices.confirm-day'), { date }, { preserveScroll: true })}>
                             <CheckCheck className="size-4" /> {t('invoices.confirm_day')}
@@ -242,6 +289,12 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                         </Link>
                     </Button>
                 </div>
+
+                {pasteError && (
+                    <div className="rounded-lg border border-red-300 bg-red-100/60 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+                        {t('orders.paste_failed')}
+                    </div>
+                )}
 
                 <p className="text-muted-foreground text-xs">{t('orders.hint')}</p>
 
@@ -267,7 +320,14 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                             </tr>
                         </thead>
                         <tbody>
-                            {routeGroups.map((group, gi) => (
+                            {visibleGroups.length === 0 && (
+                                <tr>
+                                    <td colSpan={products.length + 2} className="text-muted-foreground px-3 py-8 text-center">
+                                        {t('orders.search_empty')}
+                                    </td>
+                                </tr>
+                            )}
+                            {visibleGroups.map((group) => (
                                 <GroupRows
                                     key={group.route?.id ?? 'none'}
                                     group={group}
@@ -276,7 +336,7 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                                     valuesRef={valuesRef}
                                     resetCounter={resetCounter}
                                     totals={totals}
-                                    routeTotal={routeTotals[gi]}
+                                    routeTotal={group.customers.reduce((sum, c) => sum + (totals.byCustomer[c.id] ?? 0), 0)}
                                     canViewPrices={canViewPrices}
                                     saveCell={saveCell}
                                     navigate={navigate}
