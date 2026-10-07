@@ -87,6 +87,7 @@ export default function RoutesIndex({ routes, drivers, canManage }: RoutesPagePr
                                                         }}
                                                     >
                                                         <Pencil className="size-4" />
+                                                        <span className="sr-only">{t('common.edit')}</span>
                                                     </Button>
                                                     <ConfirmDelete url={route('delivery-routes.destroy', routeItem.id)} />
                                                 </div>

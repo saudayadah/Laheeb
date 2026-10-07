@@ -94,7 +94,7 @@ export default function DeliveryStop({ customer, products, qtys, invoice, date }
                 {parseFloat(customer.balance) > 0 && <CollectCard customerId={customer.id} />}
 
                 {posted && invoice ? (
-                    <div className="flex flex-col items-center gap-3 rounded-xl border bg-emerald-50/60 p-6 text-center dark:bg-emerald-950/30">
+                    <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
                         <div className="text-emerald-700 dark:text-emerald-300">{t('delivery.already_posted')}</div>
                         <div className="text-3xl font-bold tabular-nums">{fmtAmount(invoice.total)}</div>
                         <div className="text-muted-foreground text-sm">{t(`invoices.method.${invoice.payment_method}`)}</div>
@@ -106,7 +106,7 @@ export default function DeliveryStop({ customer, products, qtys, invoice, date }
                             </Button>
                             <Button variant="outline" asChild>
                                 <Link href={route('delivery.index')}>
-                                    <ArrowRight className="size-4" /> {t('common.back')}
+                                    <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                                 </Link>
                             </Button>
                         </div>
@@ -124,6 +124,7 @@ export default function DeliveryStop({ customer, products, qtys, invoice, date }
                                         type="text"
                                         inputMode="numeric"
                                         dir="ltr"
+                                        aria-label={p.name_ar}
                                         className="border-input h-12 w-24 rounded-lg border text-center text-lg font-semibold tabular-nums"
                                         value={quantities[p.id] ?? ''}
                                         onFocus={(e) => e.target.select()}
@@ -156,6 +157,7 @@ export default function DeliveryStop({ customer, products, qtys, invoice, date }
                                             type="text"
                                             inputMode="numeric"
                                             dir="ltr"
+                                            aria-label={`${p.name_ar} - ${t('delivery.returns_good')}`}
                                             className="border-input h-10 rounded-lg border text-center tabular-nums"
                                             value={returnsGood[p.id] ?? ''}
                                             onChange={(e) => setReturnsGood((r) => ({ ...r, [p.id]: e.target.value.replace(/[^\d]/g, '') }))}
@@ -164,6 +166,7 @@ export default function DeliveryStop({ customer, products, qtys, invoice, date }
                                             type="text"
                                             inputMode="numeric"
                                             dir="ltr"
+                                            aria-label={`${p.name_ar} - ${t('delivery.returns_damaged')}`}
                                             className="border-input h-10 rounded-lg border text-center tabular-nums"
                                             value={returnsDamaged[p.id] ?? ''}
                                             onChange={(e) => setReturnsDamaged((r) => ({ ...r, [p.id]: e.target.value.replace(/[^\d]/g, '') }))}
@@ -240,6 +243,7 @@ function CollectCard({ customerId }: { customerId: number }) {
                     type="text"
                     inputMode="decimal"
                     dir="ltr"
+                    aria-label={t('receipts.collect')}
                     className="border-input h-11 w-full rounded-lg border px-2 text-center text-lg font-semibold tabular-nums"
                     placeholder="0.00"
                     value={amount}

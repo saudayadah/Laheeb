@@ -121,7 +121,7 @@ export default function ClosesIndex({ closes, isApprover, drivers, selfId }: Clo
                                                     varianceNum < 0
                                                         ? 'text-red-600 dark:text-red-400'
                                                         : varianceNum > 0
-                                                          ? 'text-amber-600 dark:text-amber-400'
+                                                          ? 'text-amber-700 dark:text-amber-400'
                                                           : 'text-emerald-700 dark:text-emerald-400'
                                                 }`}
                                             >

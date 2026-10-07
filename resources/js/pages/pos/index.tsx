@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount, fmtPrice } from '@/lib/format';
+import { fmtAmount, fmtInt, fmtPrice } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, router } from '@inertiajs/react';
 import { Banknote, CreditCard, LoaderCircle, Minus, Plus, Trash2 } from 'lucide-react';
@@ -78,7 +78,7 @@ export default function PosIndex({ products, todayCash, todayMada, todayCount }:
                         <div className="text-muted-foreground text-xs">{t('pos.today_mada')}</div>
                     </div>
                     <div className="rounded-xl border p-3 text-center">
-                        <div className="text-xl font-bold tabular-nums">{todayCount}</div>
+                        <div className="text-xl font-bold tabular-nums">{fmtInt(todayCount)}</div>
                         <div className="text-muted-foreground text-xs">{t('pos.sales_count')}</div>
                     </div>
                 </div>
@@ -120,11 +120,23 @@ export default function PosIndex({ products, todayCash, todayMada, todayCount }:
                                 {inCart.map((p) => (
                                     <div key={p.id} className="flex items-center gap-2">
                                         <span className="min-w-0 flex-1 truncate text-sm">{p.name_ar}</span>
-                                        <Button variant="outline" size="icon" className="size-7" onClick={() => add(p.id, -1)}>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="size-7"
+                                            aria-label={`${t('pos.decrease')} ${p.name_ar}`}
+                                            onClick={() => add(p.id, -1)}
+                                        >
                                             <Minus className="size-3" />
                                         </Button>
                                         <span className="w-8 text-center font-semibold tabular-nums">{cart[p.id]}</span>
-                                        <Button variant="outline" size="icon" className="size-7" onClick={() => add(p.id, 1)}>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="size-7"
+                                            aria-label={`${t('pos.increase')} ${p.name_ar}`}
+                                            onClick={() => add(p.id, 1)}
+                                        >
                                             <Plus className="size-3" />
                                         </Button>
                                     </div>

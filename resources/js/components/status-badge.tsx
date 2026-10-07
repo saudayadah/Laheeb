@@ -5,7 +5,14 @@ export function ActiveBadge({ active }: { active: boolean }) {
     const { t } = useTrans();
 
     return (
-        <Badge variant={active ? 'secondary' : 'outline'} className={active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}>
+        <Badge
+            variant="outline"
+            className={
+                active
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400'
+                    : 'text-muted-foreground'
+            }
+        >
             {active ? t('common.active') : t('common.inactive')}
         </Badge>
     );

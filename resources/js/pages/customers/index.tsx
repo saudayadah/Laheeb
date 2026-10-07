@@ -66,6 +66,7 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                         className="w-40"
                         value={filters.route_id ?? ''}
                         onChange={(e) => applyFilters({ route_id: e.target.value || null })}
+                        aria-label={t('customers.route')}
                     >
                         <option value="">
                             {t('customers.route')}: {t('common.all')}
@@ -80,6 +81,7 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                         className="w-40"
                         value={filters.group_id ?? ''}
                         onChange={(e) => applyFilters({ group_id: e.target.value || null })}
+                        aria-label={t('customers.group')}
                     >
                         <option value="">
                             {t('customers.group')}: {t('common.all')}
@@ -94,6 +96,7 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                         className="w-36"
                         value={filters.payment_term ?? ''}
                         onChange={(e) => applyFilters({ payment_term: e.target.value || null })}
+                        aria-label={t('customers.payment_term')}
                     >
                         <option value="">
                             {t('customers.payment_term')}: {t('common.all')}
@@ -101,7 +104,12 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                         <option value="cash">{t('customers.term.cash')}</option>
                         <option value="credit">{t('customers.term.credit')}</option>
                     </NativeSelect>
-                    <NativeSelect className="w-32" value={filters.status ?? ''} onChange={(e) => applyFilters({ status: e.target.value || null })}>
+                    <NativeSelect
+                        className="w-32"
+                        value={filters.status ?? ''}
+                        onChange={(e) => applyFilters({ status: e.target.value || null })}
+                        aria-label={t('common.status')}
+                    >
                         <option value="">
                             {t('common.status')}: {t('common.all')}
                         </option>
@@ -131,7 +139,9 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                             <TableBody>
                                 {customers.data.map((customer) => (
                                     <TableRow key={customer.id}>
-                                        <TableCell className="text-muted-foreground tabular-nums">{customer.code}</TableCell>
+                                        <TableCell className="text-muted-foreground tabular-nums" dir="ltr">
+                                            {customer.code}
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {canManage ? (
                                                 <Link href={route('customers.edit', customer.id)} className="hover:underline">
@@ -159,6 +169,7 @@ export default function CustomersIndex({ customers, filters, routes, groups, can
                                                     <Button variant="ghost" size="icon" className="size-8" asChild>
                                                         <Link href={route('customers.edit', customer.id)}>
                                                             <Pencil className="size-4" />
+                                                            <span className="sr-only">{t('common.edit')}</span>
                                                         </Link>
                                                     </Button>
                                                     <ConfirmDelete url={route('customers.destroy', customer.id)} />

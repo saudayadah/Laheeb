@@ -165,7 +165,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('lines/{line}', [PayrollController::class, 'updateLine'])->name('lines.update');
         Route::post('{run}/review', [PayrollController::class, 'review'])->name('review');
         Route::post('{run}/approve', [PayrollController::class, 'approve'])->name('approve');
+        Route::post('{run}/reopen', [PayrollController::class, 'reopen'])->name('reopen');
         Route::post('{run}/pay', [PayrollController::class, 'pay'])->name('pay');
+        Route::delete('{run}', [PayrollController::class, 'destroy'])->name('destroy');
     });
 
     Route::resource('customers', CustomerController::class)->except(['show']);
@@ -177,6 +179,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('delivery-routes', DeliveryRouteController::class)
         ->only(['index', 'store', 'update', 'destroy'])
         ->parameters(['delivery-routes' => 'delivery_route']);
+
+    Route::post('products/categories', [ProductController::class, 'storeCategory'])->name('products.categories.store');
+    Route::patch('products/categories/{category}', [ProductController::class, 'updateCategory'])->name('products.categories.update');
 
     Route::resource('products', ProductController::class)
         ->only(['index', 'store', 'update', 'destroy']);

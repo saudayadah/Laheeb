@@ -76,7 +76,7 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                     }
                 />
 
-                <div className="bg-accent/40 max-w-sm rounded-xl border p-4">
+                <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 max-w-sm rounded-xl border p-4">
                     <div className="text-3xl font-bold tabular-nums">{fmtAmount(outstandingTotal)}</div>
                     <div className="text-muted-foreground mt-1 text-sm">
                         {t('advances.outstanding_total')} ({t('common.currency')})
@@ -127,10 +127,11 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="size-8 text-emerald-600"
+                                                    className="size-8 text-emerald-700 dark:text-emerald-400"
                                                     onClick={() => router.post(route('advances.approve', advance.id), {}, { preserveScroll: true })}
                                                 >
                                                     <Check className="size-4" />
+                                                    <span className="sr-only">{t('expenses.approve')}</span>
                                                 </Button>
                                             )}
                                         </TableCell>
@@ -158,7 +159,7 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                                     <TableHead className="text-end">{t('expenses.amount')}</TableHead>
                                     <TableHead className="text-end">{t('advances.remaining')}</TableHead>
                                     <TableHead>{t('common.status')}</TableHead>
-                                    <TableHead className="w-14" />
+                                    {canApprove && <TableHead className="w-14" />}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -183,20 +184,23 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                                                     : t(`expenses.status.${charge.status}`)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
-                                            {charge.status === 'pending' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8 text-emerald-600"
-                                                    onClick={() =>
-                                                        router.post(route('advances.charges.approve', charge.id), {}, { preserveScroll: true })
-                                                    }
-                                                >
-                                                    <Check className="size-4" />
-                                                </Button>
-                                            )}
-                                        </TableCell>
+                                        {canApprove && (
+                                            <TableCell>
+                                                {charge.status === 'pending' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8 text-emerald-700 dark:text-emerald-400"
+                                                        onClick={() =>
+                                                            router.post(route('advances.charges.approve', charge.id), {}, { preserveScroll: true })
+                                                        }
+                                                    >
+                                                        <Check className="size-4" />
+                                                        <span className="sr-only">{t('expenses.approve')}</span>
+                                                    </Button>
+                                                )}
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 ))}
                             </TableBody>

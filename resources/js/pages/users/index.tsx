@@ -85,6 +85,7 @@ export default function UsersIndex({ users, roles, currentUserId }: UsersPagePro
                                                 }}
                                             >
                                                 <Pencil className="size-4" />
+                                                <span className="sr-only">{t('common.edit')}</span>
                                             </Button>
                                         </TableCell>
                                     </TableRow>

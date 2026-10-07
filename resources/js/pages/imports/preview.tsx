@@ -1,12 +1,11 @@
 import { PageHeader } from '@/components/page-header';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { useTrans } from '@/lib/i18n';
 import { type ImportRow } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { CheckCircle2, LoaderCircle, XCircle } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface ImportPreviewProps {
@@ -51,23 +50,23 @@ export default function ImportPreview({ type, token, headings, rows, validCount,
                     }
                 />
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <Badge variant="secondary" className="gap-1 text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3.5" />
-                        {t('imports.valid_rows')}: {validCount}
-                    </Badge>
-                    <Badge variant="secondary" className={errorCount > 0 ? 'gap-1 text-red-700 dark:text-red-400' : 'gap-1'}>
-                        <XCircle className="size-3.5" />
-                        {t('imports.error_rows')}: {errorCount}
-                    </Badge>
-                    {errorCount > 0 && <span className="text-muted-foreground text-sm">{t('imports.commit_valid_only')}</span>}
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-xl border p-4">
+                        <p className="text-muted-foreground text-sm">{t('imports.valid_rows')}</p>
+                        <p className="text-2xl font-semibold text-emerald-700 tabular-nums dark:text-emerald-400">{validCount}</p>
+                    </div>
+                    <div className="rounded-xl border p-4">
+                        <p className="text-muted-foreground text-sm">{t('imports.error_rows')}</p>
+                        <p className="text-2xl font-semibold text-red-700 tabular-nums dark:text-red-400">{errorCount}</p>
+                    </div>
                 </div>
+                {errorCount > 0 && <p className="text-muted-foreground text-sm">{t('imports.commit_valid_only')}</p>}
 
                 <div className="rounded-xl border">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>#</TableHead>
+                                <TableHead>{t('imports.row')}</TableHead>
                                 {headings.map((h) => (
                                     <TableHead key={h}>{h}</TableHead>
                                 ))}
@@ -76,7 +75,7 @@ export default function ImportPreview({ type, token, headings, rows, validCount,
                         </TableHeader>
                         <TableBody>
                             {rows.map((row) => (
-                                <TableRow key={row.row} className={row.errors.length > 0 ? 'bg-red-50/50 dark:bg-red-950/20' : ''}>
+                                <TableRow key={row.row} className={row.errors.length > 0 ? 'bg-red-100/60 dark:bg-red-950/20' : ''}>
                                     <TableCell className="text-muted-foreground tabular-nums">{row.row}</TableCell>
                                     {headings.map((h) => (
                                         <TableCell key={h} className="max-w-40 truncate">
@@ -85,7 +84,7 @@ export default function ImportPreview({ type, token, headings, rows, validCount,
                                     ))}
                                     <TableCell>
                                         {row.errors.length > 0 && (
-                                            <ul className="list-inside text-xs text-red-600 dark:text-red-400">
+                                            <ul className="list-inside text-xs text-red-700 dark:text-red-400">
                                                 {row.errors.map((error, i) => (
                                                     <li key={i}>{error}</li>
                                                 ))}

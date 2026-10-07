@@ -30,7 +30,7 @@ export default function InvoicePrint({ invoice, bakery }: { invoice: InvoiceData
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                     <Link href={route('invoices.show', invoice.id)}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
             </div>

@@ -41,6 +41,8 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         <AuthLayout title={t('auth.login.title')} description={t('auth.login.description')}>
             <Head title={t('auth.login.title')} />
 
+            {status && <div className="text-center text-sm font-medium text-green-700 dark:text-green-400">{status}</div>}
+
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
@@ -54,7 +56,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             autoComplete="email"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
-                            placeholder="email@example.com"
+                            placeholder={t('auth.email_placeholder')}
                             dir="ltr"
                         />
                         <InputError message={errors.email} />
@@ -83,7 +85,13 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Checkbox id="remember" name="remember" tabIndex={3} />
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            checked={data.remember}
+                            onCheckedChange={(v) => setData('remember', v === true)}
+                            tabIndex={3}
+                        />
                         <Label htmlFor="remember">{t('auth.remember')}</Label>
                     </div>
 
@@ -93,8 +101,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     </Button>
                 </div>
             </form>
-
-            {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
         </AuthLayout>
     );
 }

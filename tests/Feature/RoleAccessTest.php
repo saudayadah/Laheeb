@@ -3,6 +3,7 @@
 use App\Models\Customer;
 use App\Models\Price;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 
@@ -68,10 +69,12 @@ test('an accountant cannot change system settings', function () {
 });
 
 test('an accountant cannot manage products', function () {
+    $category = ProductCategory::create(['name_ar' => 'صاج']);
+
     $this->actingAs(makeUser('accountant'))
         ->post('/products', [
             'name_ar' => 'صاج 99',
-            'category' => 'saj',
+            'product_category_id' => $category->id,
             'size_cm' => 99,
             'unit' => 'loaf',
             'default_price' => '0.30',

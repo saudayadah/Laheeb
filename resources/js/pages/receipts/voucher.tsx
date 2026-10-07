@@ -37,7 +37,7 @@ export default function ReceiptVoucher({ receipt, bakeryName, backTo }: VoucherP
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                     <Link href={backTo}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
             </div>

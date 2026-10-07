@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -14,7 +15,7 @@ class Product extends Model
     use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
-        'name_ar', 'name_en', 'category', 'size_cm', 'unit',
+        'name_ar', 'name_en', 'product_category_id', 'size_cm', 'unit',
         'default_price', 'vat_rate', 'active', 'sort_order',
     ];
 
@@ -25,6 +26,11 @@ class Product extends Model
             'vat_rate' => 'decimal:2',
             'active' => 'boolean',
         ];
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'product_category_id');
     }
 
     public function prices(): HasMany

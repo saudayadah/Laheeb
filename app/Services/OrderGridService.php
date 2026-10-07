@@ -22,7 +22,7 @@ class OrderGridService
     {
         $products = Product::where('active', true)
             ->orderBy('sort_order')
-            ->get(['id', 'name_ar', 'name_en', 'category', 'size_cm']);
+            ->get(['id', 'name_ar', 'name_en', 'size_cm']);
 
         $customers = Customer::where('active', true)
             ->with('route:id,name,sort_order')

@@ -64,6 +64,7 @@ function ImportCard({ type }: { type: string }) {
                     ref={fileInput}
                     type="file"
                     accept=".xlsx,.xls,.csv"
+                    aria-label={t('imports.choose_file')}
                     className="text-muted-foreground file:bg-muted file:text-foreground w-full cursor-pointer rounded-md border p-2 text-sm file:me-3 file:cursor-pointer file:rounded file:border-0 file:px-3 file:py-1"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />

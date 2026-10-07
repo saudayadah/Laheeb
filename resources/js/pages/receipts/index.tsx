@@ -78,7 +78,7 @@ export default function ReceiptsIndex({ receipts, filters, summary, customers, g
                 />
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <div className="bg-accent/40 rounded-xl border p-4">
+                    <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 rounded-xl border p-4">
                         <div className="text-2xl font-bold tabular-nums">{fmtAmount(summary.total)}</div>
                         <div className="text-muted-foreground text-xs">{t('receipts.total_collected')}</div>
                     </div>
@@ -97,9 +97,23 @@ export default function ReceiptsIndex({ receipts, filters, summary, customers, g
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <Input type="date" dir="ltr" className="w-38" value={filters.from} onChange={(e) => apply({ from: e.target.value })} />
+                    <Input
+                        type="date"
+                        dir="ltr"
+                        className="w-38"
+                        aria-label={t('common.from')}
+                        value={filters.from}
+                        onChange={(e) => apply({ from: e.target.value })}
+                    />
                     <span className="text-muted-foreground">—</span>
-                    <Input type="date" dir="ltr" className="w-38" value={filters.to} onChange={(e) => apply({ to: e.target.value })} />
+                    <Input
+                        type="date"
+                        dir="ltr"
+                        className="w-38"
+                        aria-label={t('common.to')}
+                        value={filters.to}
+                        onChange={(e) => apply({ to: e.target.value })}
+                    />
                     <NativeSelect className="w-36" value={filters.method ?? ''} onChange={(e) => apply({ method: e.target.value || null })}>
                         <option value="">
                             {t('invoices.method')}: {t('common.all')}
@@ -158,6 +172,7 @@ export default function ReceiptsIndex({ receipts, filters, summary, customers, g
                                             <Button variant="ghost" size="icon" className="size-8" asChild>
                                                 <Link href={route('receipts.voucher', receipt.id)}>
                                                     <Printer className="size-4" />
+                                                    <span className="sr-only">{t('receipts.voucher')}</span>
                                                 </Link>
                                             </Button>
                                         </TableCell>

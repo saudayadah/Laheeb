@@ -177,7 +177,7 @@ export default function InvoiceShow({ invoice, canVoid, canReclassify }: ShowPro
                                     <TableRow>
                                         <TableHead>{t('invoices.number')}</TableHead>
                                         <TableHead>{t('common.date')}</TableHead>
-                                        <TableHead>{t('invoices.reclass_reason')}</TableHead>
+                                        <TableHead>{t('invoices.reason')}</TableHead>
                                         <TableHead className="text-end">{t('invoices.total')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -360,7 +360,7 @@ function ReturnDialog({ open, onOpenChange, invoice }: { open: boolean; onOpenCh
                                 <option value="damaged">{t('delivery.returns_damaged')}</option>
                             </NativeSelect>
                         </Field>
-                        <Field label={t('invoices.reclass_reason')} htmlFor="ret_reason" optional>
+                        <Field label={t('invoices.reason')} htmlFor="ret_reason" optional>
                             <Input id="ret_reason" value={reason} onChange={(e) => setReason(e.target.value)} />
                         </Field>
                     </div>

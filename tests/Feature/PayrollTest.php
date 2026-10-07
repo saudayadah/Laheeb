@@ -4,6 +4,7 @@ use App\Models\Advance;
 use App\Models\Employee;
 use App\Models\Expense;
 use App\Models\LedgerEntry;
+use App\Models\PayrollRun;
 use App\Models\User;
 use App\Services\PayrollService;
 use App\Services\PostingService;
@@ -197,4 +198,39 @@ test('an accountant cannot give the owner approval to a payroll run', function (
 
     $this->actingAs($this->accountant)->post(route('payroll.approve', $run))->assertForbidden();
     $this->actingAs($this->owner)->post(route('payroll.approve', $run))->assertRedirect();
+});
+
+test('a reviewed or approved run can be reopened for editing, a paid one cannot', function () {
+    Employee::factory()->create(['basic_salary' => '3000.00']);
+    $run = $this->service->createRun('2026-10', $this->owner);
+
+    $this->service->review($run, $this->owner);
+    $this->service->approve($run, $this->owner);
+    expect($run->refresh()->isEditable())->toBeFalse();
+
+    $this->service->reopen($run, $this->owner);
+    expect($run->refresh()->status)->toBe('draft')
+        ->and($run->approved_by)->toBeNull()
+        ->and($run->isEditable())->toBeTrue();
+
+    $this->service->review($run, $this->owner);
+    $this->service->approve($run, $this->owner);
+    $this->service->pay($run, [$run->lines()->first()->id => 'bank'], $this->owner);
+
+    expect(fn () => $this->service->reopen($run->refresh(), $this->owner))->toThrow(ValidationException::class);
+});
+
+test('an unpaid run can be deleted, a paid one cannot', function () {
+    Employee::factory()->create(['basic_salary' => '3000.00']);
+
+    $run = $this->service->createRun('2026-10', $this->owner);
+    $this->service->deleteRun($run, $this->owner);
+    expect(PayrollRun::count())->toBe(0);
+
+    $run2 = $this->service->createRun('2026-10', $this->owner);
+    $this->service->review($run2, $this->owner);
+    $this->service->approve($run2, $this->owner);
+    $this->service->pay($run2, [$run2->lines()->first()->id => 'bank'], $this->owner);
+
+    expect(fn () => $this->service->deleteRun($run2->refresh(), $this->owner))->toThrow(ValidationException::class);
 });

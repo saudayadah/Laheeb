@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/page-header';
 import AppLayout from '@/layouts/app-layout';
 import { fmtAmount, fmtInt } from '@/lib/format';
 import { useCan, useTrans } from '@/lib/i18n';
@@ -33,7 +34,8 @@ export default function Dashboard({ money, stats }: DashboardProps) {
     return (
         <AppLayout breadcrumbs={[{ title: t('nav.dashboard'), href: '/dashboard' }]}>
             <Head title={t('dashboard.title')} />
-            <div className="flex h-full flex-1 flex-col gap-5 p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4">
+                <PageHeader title={t('dashboard.title')} />
                 {money && (
                     <>
                         {/* The owner's headline numbers */}
@@ -121,10 +123,10 @@ function SalesTrend({ data }: { data: TrendPoint[] }) {
                             axisLine={false}
                             tickCount={4}
                             tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v))}
+                            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}${t('common.thousands_suffix')}` : String(v))}
                         />
                         <Tooltip
-                            cursor={{ fill: 'var(--accent)', opacity: 0.4 }}
+                            cursor={{ fill: 'var(--accent)', opacity: 0.7 }}
                             content={({ active, payload }) => {
                                 if (!active || !payload?.length) return null;
                                 const point = payload[0].payload as TrendPoint;
@@ -151,7 +153,9 @@ function SalesTrend({ data }: { data: TrendPoint[] }) {
 function BigCard({ label, value, highlight, warn, link }: { label: string; value: string; highlight?: boolean; warn?: boolean; link?: string }) {
     const { t } = useTrans();
     const inner = (
-        <div className={`h-full rounded-xl border p-4 ${highlight ? 'bg-accent/40' : ''} ${link ? 'hover:bg-accent/30 transition-colors' : ''}`}>
+        <div
+            className={`h-full rounded-xl border p-4 ${highlight ? 'border-primary/30 bg-primary/10 dark:bg-primary/15' : ''} ${link ? 'hover:bg-accent transition-colors' : ''}`}
+        >
             <div className={`text-3xl font-bold tabular-nums ${warn ? 'text-red-600 dark:text-red-400' : ''}`}>{fmtAmount(value)}</div>
             <div className="text-muted-foreground mt-1 text-sm">
                 {label} ({t('common.currency')})
@@ -165,7 +169,7 @@ function BigCard({ label, value, highlight, warn, link }: { label: string; value
 function SmallCard({ label, value, amber }: { label: string; value: string; amber?: boolean }) {
     return (
         <div className="rounded-xl border p-3">
-            <div className={`text-xl font-semibold tabular-nums ${amber && parseFloat(value) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+            <div className={`text-xl font-semibold tabular-nums ${amber && parseFloat(value) > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
                 {fmtAmount(value)}
             </div>
             <div className="text-muted-foreground mt-0.5 text-xs">{label}</div>
@@ -175,7 +179,7 @@ function SmallCard({ label, value, amber }: { label: string; value: string; ambe
 
 function Shortcut({ icon: Icon, label, href, meta }: { icon: typeof CalendarDays; label: string; href: string; meta?: string }) {
     return (
-        <Link href={href} className="hover:bg-accent/40 flex items-center gap-3 rounded-xl border p-3 transition-colors">
+        <Link href={href} className="hover:bg-accent flex items-center gap-3 rounded-xl border p-3 transition-colors">
             <div className="bg-muted flex size-10 items-center justify-center rounded-lg">
                 <Icon className="text-muted-foreground size-5" />
             </div>

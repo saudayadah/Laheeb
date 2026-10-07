@@ -53,11 +53,11 @@ export default function LeavesIndex({ leaves, employees, awayCount, overdueCount
                 />
 
                 <div className="grid max-w-sm grid-cols-2 gap-3">
-                    <div className="rounded-xl border p-4 text-center">
+                    <div className="rounded-xl border p-4">
                         <div className="text-2xl font-bold tabular-nums">{fmtInt(awayCount)}</div>
                         <div className="text-muted-foreground text-xs">{t('leaves.away_now')}</div>
                     </div>
-                    <div className={`rounded-xl border p-4 text-center ${overdueCount > 0 ? 'border-red-300 dark:border-red-800' : ''}`}>
+                    <div className={`rounded-xl border p-4 ${overdueCount > 0 ? 'border-red-300 dark:border-red-800' : ''}`}>
                         <div className={`text-2xl font-bold tabular-nums ${overdueCount > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                             {fmtInt(overdueCount)}
                         </div>

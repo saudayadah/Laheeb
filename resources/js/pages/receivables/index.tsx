@@ -55,7 +55,7 @@ export default function ReceivablesIndex({ rows, totals, canReceipt }: Receivabl
 
                 {/* The three numbers the owner opens this page for */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div className="bg-accent/40 rounded-xl border p-4">
+                    <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 rounded-xl border p-4">
                         <div className="text-3xl font-bold tabular-nums">{fmtAmount(totals.balance)}</div>
                         <div className="text-muted-foreground mt-1 text-sm">
                             {t('receivables.total')} ({t('common.currency')})
@@ -116,10 +116,10 @@ export default function ReceivablesIndex({ rows, totals, canReceipt }: Receivabl
                                         <TableCell className="text-muted-foreground text-end tabular-nums">
                                             {parseFloat(row.buckets.b30) > 0 ? fmtAmount(row.buckets.b30) : ''}
                                         </TableCell>
-                                        <TableCell className="text-end text-amber-600 tabular-nums dark:text-amber-400">
+                                        <TableCell className="text-end text-amber-700 tabular-nums dark:text-amber-400">
                                             {parseFloat(row.buckets.b60) > 0 ? fmtAmount(row.buckets.b60) : ''}
                                         </TableCell>
-                                        <TableCell className="text-end text-orange-600 tabular-nums dark:text-orange-400">
+                                        <TableCell className="text-end text-orange-700 tabular-nums dark:text-orange-400">
                                             {parseFloat(row.buckets.b90) > 0 ? fmtAmount(row.buckets.b90) : ''}
                                         </TableCell>
                                         <TableCell className="text-end font-semibold text-red-600 tabular-nums dark:text-red-400">

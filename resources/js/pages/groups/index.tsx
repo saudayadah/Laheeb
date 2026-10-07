@@ -82,6 +82,7 @@ export default function GroupsIndex({ groups, canManage }: GroupsPageProps) {
                                                 <div className="flex items-center justify-end gap-1">
                                                     <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(group)}>
                                                         <Pencil className="size-4" />
+                                                        <span className="sr-only">{t('common.edit')}</span>
                                                     </Button>
                                                     <ConfirmDelete url={route('groups.destroy', group.id)} />
                                                 </div>

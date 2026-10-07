@@ -3,17 +3,22 @@
 namespace App\Services\Imports;
 
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
 class ProductsImporter extends BaseImporter
 {
-    private const CATEGORIES = [
-        'saj' => 'saj', 'صاج' => 'saj',
-        'milk' => 'milk', 'حليب' => 'milk',
-        'arabic' => 'arabic', 'عربي' => 'arabic',
-        'wheat' => 'wheat', 'بر' => 'wheat', 'whole-wheat' => 'wheat',
-        'red' => 'red', 'أحمر' => 'red', 'خبز أحمر' => 'red', 'احمر' => 'red',
+    /**
+     * Legacy slugs and common spellings mapped to canonical Arabic names.
+     * Unknown names are created as new categories — the catalogue is open.
+     */
+    private const SYNONYMS = [
+        'saj' => 'صاج',
+        'milk' => 'حليب', 'حليب' => 'حليب',
+        'arabic' => 'عربي',
+        'wheat' => 'بر', 'whole-wheat' => 'بر',
+        'red' => 'خبز أحمر', 'أحمر' => 'خبز أحمر', 'احمر' => 'خبز أحمر',
     ];
 
     public function type(): string
@@ -30,7 +35,7 @@ class ProductsImporter extends BaseImporter
     {
         return [
             ['صاج 30', 'Saj 30', 'صاج', '30', '0.30', '', '1'],
-            ['حليب 27', 'Milk 27', 'حليب', '27', '0.35', '', '2'],
+            ['معمول تمر', 'Date maamoul', 'معجنات', '', '1.50', '', '2'],
         ];
     }
 
@@ -61,8 +66,8 @@ class ProductsImporter extends BaseImporter
                 $errors[] = __('validation.required', ['attribute' => __('validation.attributes.name_ar')]);
             }
 
-            if ($data['category'] === null || ! isset(self::CATEGORIES[mb_strtolower($data['category'])])) {
-                $errors[] = __('validation.in', ['attribute' => __('validation.attributes.category')]);
+            if ($data['category'] === null) {
+                $errors[] = __('validation.required', ['attribute' => __('validation.attributes.category')]);
             }
 
             if ($data['default_price'] === null) {
@@ -89,7 +94,7 @@ class ProductsImporter extends BaseImporter
             Product::create([
                 'name_ar' => $data['name_ar'],
                 'name_en' => $data['name_en'],
-                'category' => self::CATEGORIES[mb_strtolower($data['category'])],
+                'product_category_id' => $this->resolveCategory($data['category'])->id,
                 'size_cm' => $data['size_cm'] !== null ? (int) $data['size_cm'] : null,
                 'default_price' => $data['default_price'],
                 'vat_rate' => $data['vat_rate'],
@@ -100,5 +105,18 @@ class ProductsImporter extends BaseImporter
         }
 
         return $count;
+    }
+
+    private function resolveCategory(string $name): ProductCategory
+    {
+        $canonical = self::SYNONYMS[mb_strtolower(trim($name))] ?? trim($name);
+
+        $existing = ProductCategory::query()->where('name_ar', $canonical)->first()
+            ?? ProductCategory::query()->whereRaw('LOWER(name_en) = ?', [mb_strtolower($canonical)])->first();
+
+        return $existing ?? ProductCategory::create([
+            'name_ar' => $canonical,
+            'sort_order' => (int) ProductCategory::max('sort_order') + 1,
+        ]);
     }
 }

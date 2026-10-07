@@ -123,6 +123,7 @@ export default function VehiclesIndex({ vehicles, maintenances }: VehiclesPagePr
                                                 }}
                                             >
                                                 <Pencil className="size-4" />
+                                                <span className="sr-only">{t('common.edit')}</span>
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -160,7 +161,7 @@ export default function VehiclesIndex({ vehicles, maintenances }: VehiclesPagePr
                                             </span>
                                             {m.next_due_odometer != null && (
                                                 <span className="text-muted-foreground ms-1 text-xs tabular-nums">
-                                                    / {fmtInt(m.next_due_odometer)} كم
+                                                    / {fmtInt(m.next_due_odometer)} {t('vehicles.km')}
                                                 </span>
                                             )}
                                         </TableCell>
@@ -284,7 +285,7 @@ function MaintenanceDialog({ open, onOpenChange, vehicles }: { open: boolean; on
                             id="mt_task"
                             value={data.task}
                             onChange={(e) => setData('task', e.target.value)}
-                            placeholder="تغيير زيت، فحص فرامل..."
+                            placeholder={t('vehicles.task_placeholder')}
                             required
                         />
                     </Field>

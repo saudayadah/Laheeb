@@ -90,7 +90,7 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
 
                 {/* What we expect and why */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="bg-accent/40 rounded-xl border p-3 text-center">
+                    <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 rounded-xl border p-3 text-center">
                         <div className="text-xl font-bold tabular-nums">{fmtAmount(expected)}</div>
                         <div className="text-muted-foreground text-xs">{t('closes.expected')}</div>
                     </div>
@@ -125,6 +125,7 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
                                     inputMode="numeric"
                                     dir="ltr"
                                     disabled={approved}
+                                    aria-label={`${t('closes.count')} ${denomination}`}
                                     className="h-11 text-center text-lg tabular-nums"
                                     value={counts[denomination] ?? ''}
                                     onFocus={(e) => e.target.select()}
@@ -160,7 +161,12 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
 
                 {!approved && (
                     <>
-                        <Input placeholder={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        <Input
+                            aria-label={t('common.notes')}
+                            placeholder={t('common.notes')}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                        />
                         <Button size="lg" className="h-12" onClick={submit} disabled={saving}>
                             {saving && <LoaderCircle className="size-4 animate-spin" />}
                             {t('closes.submit')}

@@ -1,5 +1,6 @@
 import { EmptyState } from '@/components/empty-state';
 import { Field, NativeSelect } from '@/components/field';
+import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,17 +38,19 @@ export default function DeliveryIndex({ stops, date, doneCount, expenseCategorie
         <AppLayout breadcrumbs={[{ title: t('delivery.title'), href: '/delivery' }]}>
             <Head title={t('delivery.title')} />
             <div className="mx-auto flex w-full max-w-xl flex-col gap-3 p-4">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-lg font-semibold">{t('delivery.title')}</h1>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Badge variant="secondary" className="text-emerald-700 dark:text-emerald-400">
-                            {t('delivery.done')}: {doneCount}
-                        </Badge>
-                        <Badge variant="secondary">
-                            {t('delivery.pending')}: {stops.length - doneCount}
-                        </Badge>
-                    </div>
-                </div>
+                <PageHeader
+                    title={t('delivery.title')}
+                    actions={
+                        <>
+                            <Badge variant="secondary" className="text-emerald-700 dark:text-emerald-400">
+                                {t('delivery.done')}: {doneCount}
+                            </Badge>
+                            <Badge variant="secondary">
+                                {t('delivery.pending')}: {stops.length - doneCount}
+                            </Badge>
+                        </>
+                    }
+                />
 
                 {stops.length === 0 ? (
                     <EmptyState icon={Truck} message={t('delivery.no_stops')} />
@@ -60,7 +63,7 @@ export default function DeliveryIndex({ stops, date, doneCount, expenseCategorie
                                     key={stop.id}
                                     href={route('delivery.stop', stop.id)}
                                     className={`flex items-center gap-3 rounded-xl border p-3 active:scale-[0.99] ${
-                                        posted ? 'bg-emerald-50/60 dark:bg-emerald-950/30' : 'bg-card'
+                                        posted ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'bg-card'
                                     }`}
                                 >
                                     <div

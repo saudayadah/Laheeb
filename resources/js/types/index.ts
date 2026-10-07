@@ -120,11 +120,19 @@ export interface ProductItem {
     id: number;
     name_ar: string;
     name_en: string | null;
-    category: string;
+    product_category_id: number | null;
     size_cm: number | null;
     unit: string;
     default_price: string;
     vat_rate: string | null;
+    active: boolean;
+    sort_order: number;
+}
+
+export interface ProductCategoryItem {
+    id: number;
+    name_ar: string;
+    name_en: string | null;
     active: boolean;
     sort_order: number;
 }

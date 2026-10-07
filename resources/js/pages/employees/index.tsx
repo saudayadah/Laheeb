@@ -69,7 +69,7 @@ export default function EmployeesIndex({ employees, users, totalSalaries, totalO
                     </div>
                     <div className="rounded-xl border p-4">
                         <div
-                            className={`text-2xl font-bold tabular-nums ${parseFloat(totalOutstanding) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}
+                            className={`text-2xl font-bold tabular-nums ${parseFloat(totalOutstanding) > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}
                         >
                             {fmtAmount(totalOutstanding)}
                         </div>
@@ -105,7 +105,7 @@ export default function EmployeesIndex({ employees, users, totalSalaries, totalO
                                         </TableCell>
                                         <TableCell className="text-end tabular-nums">{fmtAmount(employee.basic_salary)}</TableCell>
                                         <TableCell
-                                            className={`text-end tabular-nums ${parseFloat(employee.outstanding) > 0 ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}
+                                            className={`text-end tabular-nums ${parseFloat(employee.outstanding) > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
                                         >
                                             {fmtAmount(employee.outstanding)}
                                         </TableCell>
@@ -133,6 +133,7 @@ export default function EmployeesIndex({ employees, users, totalSalaries, totalO
                                                 }}
                                             >
                                                 <Pencil className="size-4" />
+                                                <span className="sr-only">{t('common.edit')}</span>
                                             </Button>
                                         </TableCell>
                                     </TableRow>

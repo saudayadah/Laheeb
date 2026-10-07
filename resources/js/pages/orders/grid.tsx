@@ -13,7 +13,6 @@ interface GridProduct {
     id: number;
     name_ar: string;
     name_en: string | null;
-    category: string;
     size_cm: number | null;
 }
 
@@ -190,11 +189,11 @@ export default function OrdersGrid({ date, weekday, products, routeGroups, cells
                 {/* Summary strip: the big simple numbers first */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        <Button variant="outline" size="icon" className="size-9" onClick={() => shiftDate(-1)}>
+                        <Button variant="outline" size="icon" className="size-9" aria-label={t('orders.prev_day')} onClick={() => shiftDate(-1)}>
                             {locale === 'ar' ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
                         </Button>
                         <Input type="date" value={date} onChange={(e) => changeDate(e.target.value)} className="w-40" dir="ltr" />
-                        <Button variant="outline" size="icon" className="size-9" onClick={() => shiftDate(1)}>
+                        <Button variant="outline" size="icon" className="size-9" aria-label={t('orders.next_day')} onClick={() => shiftDate(1)}>
                             {locale === 'ar' ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
                         </Button>
                         <Badge variant="secondary" className="gap-1 text-sm">
@@ -350,7 +349,7 @@ function GroupRows({
             <tr>
                 <td
                     colSpan={products.length + 2}
-                    className="bg-accent/60 text-accent-foreground sticky start-0 border-y px-3 py-1.5 text-xs font-semibold"
+                    className="bg-accent text-accent-foreground sticky start-0 border-y px-3 py-1.5 text-xs font-semibold"
                 >
                     {group.route?.name ?? t('orders.no_route')}
                     <span className="text-muted-foreground ms-3 font-normal">
@@ -395,6 +394,7 @@ function GroupRows({
                                         resetCounter={resetCounter}
                                         initialValue={valuesRef.current[key] ?? ''}
                                         disabled={isConfirmed}
+                                        ariaLabel={`${customer.name} - ${product.name_ar}`}
                                         valuesRef={valuesRef}
                                         saveCell={saveCell}
                                         navigate={navigate}
@@ -420,6 +420,7 @@ interface GridCellProps {
     resetCounter: number;
     initialValue: string;
     disabled: boolean;
+    ariaLabel: string;
     valuesRef: React.MutableRefObject<Record<string, string>>;
     saveCell: (key: string, qty: number) => Promise<void>;
     navigate: (key: string, dRow: number, dCol: number) => void;
@@ -429,7 +430,7 @@ interface GridCellProps {
 }
 
 const GridCell = memo(
-    function GridCell({ cellKey, initialValue, disabled, valuesRef, saveCell, navigate, pasteBlock, registerRef, bump }: GridCellProps) {
+    function GridCell({ cellKey, initialValue, disabled, ariaLabel, valuesRef, saveCell, navigate, pasteBlock, registerRef, bump }: GridCellProps) {
         const [value, setValue] = useState(initialValue);
         const [status, setStatus] = useState<CellStatus>('idle');
         const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -483,9 +484,9 @@ const GridCell = memo(
             status === 'error'
                 ? 'ring-2 ring-red-500'
                 : status === 'saving'
-                  ? 'ring-1 ring-amber-400'
+                  ? 'ring-1 ring-amber-500'
                   : status === 'saved'
-                    ? 'ring-1 ring-emerald-400'
+                    ? 'ring-1 ring-emerald-500'
                     : '';
 
         return (
@@ -494,6 +495,7 @@ const GridCell = memo(
                 type="text"
                 inputMode="numeric"
                 dir="ltr"
+                aria-label={ariaLabel}
                 disabled={disabled}
                 value={value}
                 onChange={(e) => commit(e.target.value)}
@@ -507,7 +509,7 @@ const GridCell = memo(
                         pasteBlock(cellKey, text);
                     }
                 }}
-                className={`h-8 w-full min-w-14 border-0 bg-transparent px-1 text-center tabular-nums outline-none focus:bg-blue-50 disabled:opacity-40 dark:focus:bg-blue-950 ${borderColor}`}
+                className={`focus:bg-accent h-8 w-full min-w-14 border-0 bg-transparent px-1 text-center tabular-nums outline-none disabled:opacity-40 ${borderColor}`}
             />
         );
     },

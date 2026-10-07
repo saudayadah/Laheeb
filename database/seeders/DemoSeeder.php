@@ -105,7 +105,7 @@ class DemoSeeder extends Seeder
         ];
 
         $priceOptions = ['0.2500', '0.2700', '0.3000', '0.3500', '0.4000'];
-        $saj40 = Product::where('category', 'saj')->where('size_cm', 40)->first();
+        $saj40 = Product::whereHas('category', fn ($q) => $q->where('name_ar', 'صاج'))->where('size_cm', 40)->first();
         $products = Product::where('active', true)->get();
 
         foreach ($names as $i => $name) {

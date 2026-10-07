@@ -65,8 +65,11 @@ export default function InvoicesIndex({ invoices, filters, summary }: InvoicesPa
                 {/* The owner's numbers for the selected period */}
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {summaryCards.map((card) => (
-                        <div key={card.label} className={`rounded-xl border p-4 ${card.highlight ? 'bg-accent/40' : ''}`}>
-                            <div className={`text-2xl font-bold tabular-nums ${card.warn ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                        <div
+                            key={card.label}
+                            className={`rounded-xl border p-4 ${card.highlight ? 'border-primary/30 bg-primary/10 dark:bg-primary/15' : ''}`}
+                        >
+                            <div className={`text-2xl font-bold tabular-nums ${card.warn ? 'text-amber-700 dark:text-amber-400' : ''}`}>
                                 {fmtAmount(card.value)}
                             </div>
                             <div className="text-muted-foreground mt-0.5 text-xs">
@@ -82,9 +85,23 @@ export default function InvoicesIndex({ invoices, filters, summary }: InvoicesPa
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <Input type="date" dir="ltr" className="w-38" value={filters.from} onChange={(e) => apply({ from: e.target.value })} />
+                    <Input
+                        type="date"
+                        dir="ltr"
+                        className="w-38"
+                        aria-label={t('common.from')}
+                        value={filters.from}
+                        onChange={(e) => apply({ from: e.target.value })}
+                    />
                     <span className="text-muted-foreground text-sm">—</span>
-                    <Input type="date" dir="ltr" className="w-38" value={filters.to} onChange={(e) => apply({ to: e.target.value })} />
+                    <Input
+                        type="date"
+                        dir="ltr"
+                        className="w-38"
+                        aria-label={t('common.to')}
+                        value={filters.to}
+                        onChange={(e) => apply({ to: e.target.value })}
+                    />
                     <SearchInput value={filters.search ?? ''} onChange={(v) => apply({ search: v })} />
                     <NativeSelect
                         className="w-32"

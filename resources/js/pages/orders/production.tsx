@@ -21,13 +21,13 @@ export default function ProductionSheet({ date, weekday, summary }: ProductionPr
     const productsWithQty = summary.products.filter((p) => (summary.totalsByProduct[p.id] ?? 0) > 0);
 
     return (
-        <div className="mx-auto max-w-4xl p-6 print:p-0">
+        <div className="mx-auto max-w-4xl bg-white p-6 text-black print:p-0">
             <Head title={t('orders.production_sheet')} />
 
             <div className="mb-4 flex items-center gap-2 print:hidden">
                 <Button variant="outline" size="sm" asChild>
                     <Link href={route('orders.grid', { date })}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
                 <Button size="sm" onClick={() => window.print()}>

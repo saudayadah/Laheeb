@@ -45,7 +45,14 @@ export default function PayrollIndex({ runs, suggestedPeriod }: { runs: Paginate
                     title={t('payroll.title')}
                     actions={
                         <div className="flex items-center gap-2">
-                            <Input type="month" dir="ltr" className="w-40" value={period} onChange={(e) => setPeriod(e.target.value)} />
+                            <Input
+                                type="month"
+                                dir="ltr"
+                                className="w-40"
+                                aria-label={t('payroll.period')}
+                                value={period}
+                                onChange={(e) => setPeriod(e.target.value)}
+                            />
                             <Button onClick={create}>
                                 <Plus className="size-4" /> {t('payroll.create')}
                             </Button>
@@ -61,7 +68,7 @@ export default function PayrollIndex({ runs, suggestedPeriod }: { runs: Paginate
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>{t('payroll.period')}</TableHead>
-                                    <TableHead>{t('payroll.employee')}</TableHead>
+                                    <TableHead>{t('payroll.lines_count')}</TableHead>
                                     <TableHead className="text-end">{t('payroll.total_net')}</TableHead>
                                     <TableHead>{t('common.status')}</TableHead>
                                 </TableRow>

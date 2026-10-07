@@ -17,7 +17,7 @@ export function Pagination({ paginator }: { paginator: Paginated<unknown> }) {
                     total: paginator.total,
                 })}
             </p>
-            <div className="flex flex-wrap items-center gap-1">
+            <nav aria-label={t('common.pagination')} className="flex flex-wrap items-center gap-1">
                 {paginator.links.map((link, i) => {
                     const label = link.label.replace('&laquo;', '«').replace('&raquo;', '»');
 
@@ -31,13 +31,13 @@ export function Pagination({ paginator }: { paginator: Paginated<unknown> }) {
 
                     return (
                         <Button key={i} variant={link.active ? 'default' : 'outline'} size="sm" asChild>
-                            <Link href={link.url} preserveScroll preserveState>
+                            <Link href={link.url} preserveScroll preserveState aria-current={link.active ? 'page' : undefined}>
                                 {label}
                             </Link>
                         </Button>
                     );
                 })}
-            </div>
+            </nav>
         </div>
     );
 }

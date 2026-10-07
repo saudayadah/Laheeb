@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\ProductCategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,9 +15,15 @@ class ProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name_ar' => ['required', 'string', 'max:100'],
+            'name_ar' => [
+                'required', 'string', 'max:100',
+                Rule::unique('products', 'name_ar')
+                    ->where('product_category_id', $this->integer('product_category_id'))
+                    ->whereNull('deleted_at')
+                    ->ignore($this->route('product')?->id),
+            ],
             'name_en' => ['nullable', 'string', 'max:100'],
-            'category' => ['required', Rule::in(ProductCategory::values())],
+            'product_category_id' => ['required', 'integer', Rule::exists('product_categories', 'id')],
             'size_cm' => ['nullable', 'integer', 'min:1', 'max:200'],
             'unit' => ['required', 'string', 'max:20'],
             'default_price' => ['required', 'numeric', 'min:0', 'max:999999'],

@@ -25,17 +25,18 @@ export default function LoadingSheet({ date, weekday, routes, routeId, sheet }: 
     const productsWithQty = sheet ? sheet.products.filter((p) => (sheet.totals[p.id] ?? 0) > 0) : [];
 
     return (
-        <div className="mx-auto max-w-5xl p-6 print:p-0">
+        <div className="mx-auto max-w-5xl bg-white p-6 text-black print:p-0">
             <Head title={t('orders.loading_sheet')} />
 
             <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
                 <Button variant="outline" size="sm" asChild>
                     <Link href={route('orders.grid', { date })}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
                 <NativeSelect
                     className="w-52"
+                    aria-label={t('customers.route')}
                     value={routeId ?? ''}
                     onChange={(e) => router.get(route('orders.loading'), { date, route_id: e.target.value }, { preserveState: false })}
                 >
@@ -65,7 +66,7 @@ export default function LoadingSheet({ date, weekday, routes, routeId, sheet }: 
             </div>
 
             {!sheet || sheet.rows.length === 0 ? (
-                <p className="text-muted-foreground py-16 text-center">{t('common.no_results')}</p>
+                <p className="py-16 text-center text-neutral-500">{t('common.no_results')}</p>
             ) : (
                 <table className="w-full border-collapse text-sm">
                     <thead>
@@ -86,7 +87,7 @@ export default function LoadingSheet({ date, weekday, routes, routeId, sheet }: 
                                 <td className="border border-black px-2 py-1 text-center tabular-nums">{i + 1}</td>
                                 <td className="border border-black px-2 py-1">
                                     <span className="font-medium">{row.customer.name}</span>
-                                    <span className="text-muted-foreground ms-2 text-xs tabular-nums">({row.customer.code})</span>
+                                    <span className="ms-2 text-xs text-neutral-500 tabular-nums">({row.customer.code})</span>
                                 </td>
                                 {productsWithQty.map((p) => (
                                     <td key={p.id} className="border border-black px-2 py-1 text-center tabular-nums">

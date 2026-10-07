@@ -53,7 +53,6 @@ export default function MaterialsIndex({ materials, movements, loavesThisMonth }
             <div className="flex flex-col gap-4 p-4">
                 <PageHeader
                     title={t('materials.title')}
-                    description={`${t('materials.loaves_month')}: ${fmtInt(loavesThisMonth)}`}
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button
@@ -85,6 +84,11 @@ export default function MaterialsIndex({ materials, movements, loavesThisMonth }
                         </div>
                     }
                 />
+
+                <div className="max-w-48 rounded-xl border p-4">
+                    <div className="text-2xl font-bold tabular-nums">{fmtInt(loavesThisMonth)}</div>
+                    <div className="text-muted-foreground text-xs">{t('materials.loaves_month')}</div>
+                </div>
 
                 {materials.length === 0 ? (
                     <EmptyState icon={Package} message={t('materials.empty')} />
@@ -132,6 +136,7 @@ export default function MaterialsIndex({ materials, movements, loavesThisMonth }
                                                 }}
                                             >
                                                 <Pencil className="size-4" />
+                                                <span className="sr-only">{t('common.edit')}</span>
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -196,7 +201,7 @@ function MaterialDialog({ open, onOpenChange, material }: { open: boolean; onOpe
     const isEdit = material !== null;
     const { data, setData, post, patch, processing, errors } = useForm({
         name: material?.name ?? '',
-        unit: material?.unit ?? 'كيس',
+        unit: material?.unit ?? t('materials.unit_default'),
         reorder_level: material?.reorder_level ?? '',
         active: material?.active ?? true,
         sort_order: 0,

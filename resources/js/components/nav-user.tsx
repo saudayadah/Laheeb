@@ -3,6 +3,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import { UserInfo } from '@/components/user-info';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTrans } from '@/lib/i18n';
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';
@@ -11,6 +12,7 @@ export function NavUser() {
     const { auth } = usePage<SharedData>().props;
     const { state } = useSidebar();
     const isMobile = useIsMobile();
+    const { locale } = useTrans();
 
     if (!auth.user) return null;
 
@@ -27,7 +29,7 @@ export function NavUser() {
                     <DropdownMenuContent
                         className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
                         align="end"
-                        side={isMobile ? 'bottom' : state === 'collapsed' ? 'left' : 'bottom'}
+                        side={isMobile ? 'bottom' : state === 'collapsed' ? (locale === 'ar' ? 'left' : 'right') : 'bottom'}
                     >
                         <UserMenuContent user={auth.user} />
                     </DropdownMenuContent>

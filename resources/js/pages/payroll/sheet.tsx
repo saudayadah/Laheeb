@@ -10,7 +10,7 @@ export default function PayrollSheet({ run, bakeryName }: { run: PayrollRunData;
     const totalNet = run.lines.reduce((sum, line) => sum + parseFloat(line.net), 0);
 
     return (
-        <div className="mx-auto max-w-5xl p-6 text-black print:p-0">
+        <div className="mx-auto max-w-5xl bg-white p-6 text-black print:p-0">
             <Head title={`${t('payroll.sheet')} ${run.period}`} />
             <style>{`@media print { @page { size: A4 landscape; margin: 10mm; } body { background: white; } }`}</style>
 
@@ -20,7 +20,7 @@ export default function PayrollSheet({ run, bakeryName }: { run: PayrollRunData;
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                     <Link href={route('payroll.show', run.id)}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
             </div>

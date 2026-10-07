@@ -1,3 +1,4 @@
+import { ConfirmDelete } from '@/components/confirm-delete';
 import { NativeSelect } from '@/components/field';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { fmtAmount } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, Link, router } from '@inertiajs/react';
-import { BadgeCheck, CheckCheck, HandCoins, Printer, ReceiptText } from 'lucide-react';
+import { BadgeCheck, CheckCheck, HandCoins, Printer, ReceiptText, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export interface PayrollLineData {
@@ -78,11 +79,17 @@ export default function PayrollShow({ run, canApprove }: { run: PayrollRunData; 
                                     <HandCoins className="size-4" /> {t('payroll.pay')}
                                 </Button>
                             )}
+                            {(run.status === 'reviewed' || run.status === 'approved') && (
+                                <Button variant="outline" size="sm" onClick={() => action('reopen')}>
+                                    <Undo2 className="size-4" /> {t('payroll.reopen')}
+                                </Button>
+                            )}
+                            {run.status !== 'paid' && <ConfirmDelete url={route('payroll.destroy', run.id)} />}
                         </div>
                     }
                 />
 
-                <div className="bg-accent/40 max-w-xs rounded-xl border p-4">
+                <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 max-w-xs rounded-xl border p-4">
                     <div className="text-3xl font-bold tabular-nums">{fmtAmount(totalNet)}</div>
                     <div className="text-muted-foreground mt-1 text-sm">
                         {t('payroll.total_net')} ({t('common.currency')})
@@ -124,34 +131,45 @@ export default function PayrollShow({ run, canApprove }: { run: PayrollRunData; 
                                     </td>
                                     <td className="border-b px-2 py-1 text-end tabular-nums">{fmtAmount(line.basic)}</td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="overtime" editable={editable} />
+                                        <EditableCell line={line} field="overtime" editable={editable} label={t('payroll.overtime')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="leave_allowance" editable={editable} />
+                                        <EditableCell line={line} field="leave_allowance" editable={editable} label={t('payroll.leave_allowance')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="additions" editable={editable} />
+                                        <EditableCell line={line} field="additions" editable={editable} label={t('payroll.additions')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="absence_days" editable={editable} />
+                                        <EditableCell line={line} field="absence_days" editable={editable} label={t('payroll.absence_days')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="absence_amount" editable={editable} />
+                                        <EditableCell line={line} field="absence_amount" editable={editable} label={t('payroll.absence')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="deductions" editable={editable} />
+                                        <EditableCell line={line} field="deductions" editable={editable} label={t('payroll.deductions')} />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="advance_recovery" editable={editable} />
+                                        <EditableCell
+                                            line={line}
+                                            field="advance_recovery"
+                                            editable={editable}
+                                            label={t('payroll.advance_recovery')}
+                                        />
                                     </td>
                                     <td className="border-b p-0">
-                                        <EditableCell line={line} field="charges_recovery" editable={editable} />
+                                        <EditableCell
+                                            line={line}
+                                            field="charges_recovery"
+                                            editable={editable}
+                                            label={t('payroll.charges_recovery')}
+                                        />
                                     </td>
                                     <td className="border-b px-2 py-1 text-end font-bold tabular-nums">{fmtAmount(line.net)}</td>
                                     <td className="border-b px-1 py-1">
                                         <Button variant="ghost" size="icon" className="size-7" asChild>
                                             <Link href={route('payroll.payslip', line.id)}>
                                                 <ReceiptText className="size-4" />
+                                                <span className="sr-only">{t('payroll.payslip')}</span>
                                             </Link>
                                         </Button>
                                     </td>
@@ -176,7 +194,7 @@ export default function PayrollShow({ run, canApprove }: { run: PayrollRunData; 
     );
 }
 
-function EditableCell({ line, field, editable }: { line: PayrollLineData; field: keyof PayrollLineData; editable: boolean }) {
+function EditableCell({ line, field, editable, label }: { line: PayrollLineData; field: keyof PayrollLineData; editable: boolean; label: string }) {
     const raw = String(line[field] ?? '0');
     const [value, setValue] = useState(parseFloat(raw) > 0 ? raw : '');
 
@@ -197,7 +215,8 @@ function EditableCell({ line, field, editable }: { line: PayrollLineData; field:
             type="text"
             inputMode="decimal"
             dir="ltr"
-            className="h-9 w-24 border-0 bg-transparent px-2 text-end tabular-nums outline-none focus:bg-blue-50 dark:focus:bg-blue-950"
+            aria-label={label}
+            className="focus:bg-accent h-9 w-24 border-0 bg-transparent px-2 text-end tabular-nums outline-none"
             defaultValue={parseFloat(raw) > 0 ? raw : ''}
             onChange={(e) => setValue(e.target.value)}
             onFocus={(e) => e.target.select()}
@@ -242,6 +261,7 @@ function PayDialog({ open, onOpenChange, run }: { open: boolean; onOpenChange: (
                             <span className="w-24 text-end text-sm font-semibold tabular-nums">{fmtAmount(line.net)}</span>
                             <NativeSelect
                                 className="w-32"
+                                aria-label={`${t('payroll.method')} — ${line.employee.name_ar ?? ''}`}
                                 value={methods[line.id]}
                                 onChange={(e) => setMethods((m) => ({ ...m, [line.id]: e.target.value }))}
                             >

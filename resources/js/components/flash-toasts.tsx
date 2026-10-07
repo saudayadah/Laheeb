@@ -23,7 +23,7 @@ export function FlashToasts() {
     if (!message || !visible) return null;
 
     return (
-        <div className="fixed start-1/2 bottom-6 z-50 -translate-x-1/2 rtl:translate-x-1/2" role="status">
+        <div className="fixed start-1/2 bottom-6 z-50 -translate-x-1/2 rtl:translate-x-1/2" role={isError ? 'alert' : 'status'}>
             <div
                 className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
                     isError

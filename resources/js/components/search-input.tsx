@@ -21,7 +21,13 @@ export function SearchInput({ value, onChange, placeholder }: { value: string; o
     return (
         <div className="relative w-full max-w-xs">
             <Search className="text-muted-foreground absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
-            <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder ?? t('common.search')} className="ps-8" />
+            <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={placeholder ?? t('common.search')}
+                aria-label={placeholder ?? t('common.search')}
+                className="ps-8"
+            />
         </div>
     );
 }

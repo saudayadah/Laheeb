@@ -72,7 +72,7 @@
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--border, currentColor);
     }
 }
 
@@ -90,16 +90,16 @@
     --popover-foreground: hsl(24, 15%, 12%);
     --primary: hsl(27, 80%, 37%);
     --primary-foreground: hsl(40, 100%, 98%);
-    --secondary: hsl(38, 30%, 94%);
+    --secondary: hsl(37, 30%, 90%);
     --secondary-foreground: hsl(26, 30%, 22%);
-    --muted: hsl(38, 25%, 95%);
+    --muted: hsl(38, 22%, 93%);
     --muted-foreground: hsl(26, 10%, 42%);
-    --accent: hsl(36, 55%, 93%);
+    --accent: hsl(35, 55%, 88%);
     --accent-foreground: hsl(26, 45%, 24%);
     --destructive: hsl(0, 72%, 48%);
     --destructive-foreground: hsl(0, 0%, 98%);
-    --border: hsl(36, 20%, 89%);
-    --input: hsl(36, 20%, 85%);
+    --border: hsl(36, 20%, 86%);
+    --input: hsl(36, 20%, 78%);
     --ring: hsl(27, 80%, 42%);
     /* Validated categorical slots (dataviz reference palette, light mode). */
     --chart-1: #2a78d6;

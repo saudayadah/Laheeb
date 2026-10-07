@@ -52,14 +52,14 @@ export default function ThermalReceipt({ invoice, bakery, backTo }: { invoice: I
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                     <Link href={backTo}>
-                        <ArrowRight className="size-4" /> {t('common.back')}
+                        <ArrowRight className="size-4 ltr:rotate-180" /> {t('common.back')}
                     </Link>
                 </Button>
             </div>
 
             {btState === 'working' && <p className="text-muted-foreground text-xs print:hidden">{btStep}</p>}
-            {btState === 'done' && <p className="text-xs text-emerald-600 print:hidden">{t('thermal.bt_done')}</p>}
-            {btState === 'failed' && <p className="text-xs text-red-600 print:hidden">{t('thermal.bt_failed')}</p>}
+            {btState === 'done' && <p className="text-xs text-emerald-700 dark:text-emerald-400 print:hidden">{t('thermal.bt_done')}</p>}
+            {btState === 'failed' && <p className="text-xs text-red-600 dark:text-red-400 print:hidden">{t('thermal.bt_failed')}</p>}
 
             <div ref={receiptRef} className="w-[72mm] border bg-white p-2 text-center text-[11px] leading-snug text-black print:border-0">
                 <div className="text-sm font-bold">{bakery.name_ar}</div>

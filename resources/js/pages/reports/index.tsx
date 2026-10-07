@@ -9,6 +9,7 @@ import { useTrans } from '@/lib/i18n';
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface MonthRow {
     month: number;
@@ -60,8 +61,6 @@ interface ReportsPageProps {
 
 type Tab = 'monthly' | 'sales' | 'customers' | 'drivers';
 
-const MONTH_NAMES_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-
 export default function ReportsIndex(props: ReportsPageProps) {
     const { t } = useTrans();
     const [tab, setTab] = useState<Tab>('monthly');
@@ -104,14 +103,22 @@ export default function ReportsIndex(props: ReportsPageProps) {
 }
 
 function RangeBar({ from, to, extra }: { from: string; to: string; extra?: Record<string, string | number> }) {
+    const { t } = useTrans();
     const apply = (updates: Record<string, string | number>) =>
         router.get(route('reports.index'), { from, to, ...extra, ...updates }, { preserveState: true, preserveScroll: true, replace: true });
 
     return (
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-            <Input type="date" dir="ltr" className="w-38" value={from} onChange={(e) => apply({ from: e.target.value })} />
+            <Input
+                type="date"
+                dir="ltr"
+                className="w-38"
+                value={from}
+                aria-label={t('common.from')}
+                onChange={(e) => apply({ from: e.target.value })}
+            />
             <span className="text-muted-foreground">—</span>
-            <Input type="date" dir="ltr" className="w-38" value={to} onChange={(e) => apply({ to: e.target.value })} />
+            <Input type="date" dir="ltr" className="w-38" value={to} aria-label={t('common.to')} onChange={(e) => apply({ to: e.target.value })} />
         </div>
     );
 }
@@ -131,7 +138,8 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
     }, [monthly, monthlyPrev]);
 
     const expensePct = totals.total > 0 ? Math.round((totals.expenses / totals.total) * 100) : 0;
-    const monthName = (m: number) => (locale === 'ar' ? MONTH_NAMES_AR[m - 1] : new Date(2000, m - 1).toLocaleString('en', { month: 'short' }));
+    const monthName = (m: number) =>
+        new Date(2000, m - 1).toLocaleString(locale === 'ar' ? 'ar' : 'en', { month: locale === 'ar' ? 'long' : 'short' });
     const changeYear = (value: string) => router.get(route('reports.index'), { year: value }, { preserveState: false });
 
     return (
@@ -148,6 +156,7 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
                         defaultValue={year}
                         min={2020}
                         max={2100}
+                        aria-label={t('reports.year')}
                         onChange={(e) => e.target.value.length === 4 && changeYear(e.target.value)}
                     />
                     <Button variant="outline" size="sm" asChild>
@@ -162,12 +171,14 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div className="bg-accent/40 rounded-xl border p-4">
+                <div className="border-primary/30 bg-primary/10 dark:bg-primary/15 rounded-xl border p-4">
                     <div className="text-2xl font-bold tabular-nums">{fmtAmount(totals.total)}</div>
                     <div className="text-muted-foreground text-xs">
                         {t('reports.total')} {year}
                         {totals.prevTotal > 0 && (
-                            <span className={`ms-2 ${totals.total >= totals.prevTotal ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <span
+                                className={`ms-2 ${totals.total >= totals.prevTotal ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
                                 {totals.total >= totals.prevTotal ? '▲' : '▼'}
                                 {Math.abs(Math.round(((totals.total - totals.prevTotal) / totals.prevTotal) * 100))}%
                             </span>
@@ -184,7 +195,9 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
                     </div>
                 </div>
                 <div className="rounded-xl border p-4">
-                    <div className={`text-2xl font-bold tabular-nums ${totals.net < 0 ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                    <div
+                        className={`text-2xl font-bold tabular-nums ${totals.net < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}
+                    >
                         {fmtAmount(totals.net)}
                     </div>
                     <div className="text-muted-foreground text-xs">{t('reports.net')}</div>
@@ -196,6 +209,8 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
             </div>
 
             <p className="text-muted-foreground text-xs">{t('reports.net_cash_hint')}</p>
+
+            <YearlyChart year={year} monthly={monthly} monthlyPrev={monthlyPrev} monthName={monthName} />
 
             <div className="overflow-auto rounded-xl border">
                 <Table>
@@ -220,7 +235,7 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
                             const prev = monthlyPrev[row.month - 1];
                             const hasData = parseFloat(row.total) !== 0 || parseFloat(row.expenses_total) !== 0;
                             return (
-                                <TableRow key={row.month} className={hasData ? '' : 'opacity-40'}>
+                                <TableRow key={row.month} className={hasData ? '' : 'opacity-60'}>
                                     <TableCell className="font-medium">{monthName(row.month)}</TableCell>
                                     <TableCell className="text-end font-semibold tabular-nums">{fmtAmount(row.total)}</TableCell>
                                     <TableCell className="text-end tabular-nums">{fmtAmount(row.cash)}</TableCell>
@@ -234,7 +249,9 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
                                     <TableCell className="text-end tabular-nums">{fmtAmount(row.expenses_total)}</TableCell>
                                     <TableCell className="text-muted-foreground text-end tabular-nums">{fmtAmount(row.salaries)}</TableCell>
                                     <TableCell className="text-muted-foreground text-end tabular-nums">{fmtAmount(row.rent)}</TableCell>
-                                    <TableCell className={`text-end font-semibold tabular-nums ${parseFloat(row.net) < 0 ? 'text-red-600' : ''}`}>
+                                    <TableCell
+                                        className={`text-end font-semibold tabular-nums ${parseFloat(row.net) < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
+                                    >
                                         {fmtAmount(row.net)}
                                     </TableCell>
                                     <TableCell className="text-end tabular-nums">{fmtAmount(row.net_cash)}</TableCell>
@@ -246,6 +263,99 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
                 </Table>
             </div>
         </>
+    );
+}
+
+/** Current vs previous year, month by month. Current year wears the sales color; last year is a neutral reference. */
+function YearlyChart({
+    year,
+    monthly,
+    monthlyPrev,
+    monthName,
+}: {
+    year: number;
+    monthly: MonthRow[];
+    monthlyPrev: MonthRow[];
+    monthName: (m: number) => string;
+}) {
+    const { t } = useTrans();
+
+    const data = useMemo(
+        () =>
+            monthly.map((row) => ({
+                month: row.month,
+                current: parseFloat(row.total),
+                prev: parseFloat(monthlyPrev[row.month - 1]?.total ?? '0'),
+            })),
+        [monthly, monthlyPrev],
+    );
+
+    const hasPrev = data.some((d) => d.prev !== 0);
+    if (data.every((d) => d.current === 0) && !hasPrev) return null;
+
+    return (
+        <div className="rounded-xl border p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">{t('reports.year_compare')}</h3>
+                <div className="text-muted-foreground flex items-center gap-4 text-xs">
+                    <span className="flex items-center gap-1.5">
+                        <span className="size-2.5 rounded-sm" style={{ background: 'var(--chart-2)' }} />
+                        {year}
+                    </span>
+                    {hasPrev && (
+                        <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-sm opacity-50" style={{ background: 'var(--muted-foreground)' }} />
+                            {year - 1}
+                        </span>
+                    )}
+                </div>
+            </div>
+            {/* Time flows start-to-end; keep the axis LTR even in the RTL app. */}
+            <div dir="ltr" className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barCategoryGap="22%" barGap={2}>
+                        <CartesianGrid vertical={false} stroke="var(--border)" />
+                        <XAxis
+                            dataKey="month"
+                            tickLine={false}
+                            axisLine={{ stroke: 'var(--border)' }}
+                            tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                            interval={0}
+                        />
+                        <YAxis
+                            width={44}
+                            tickLine={false}
+                            axisLine={false}
+                            tickCount={4}
+                            tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}${t('common.thousands_suffix')}` : String(v))}
+                        />
+                        <Tooltip
+                            cursor={{ fill: 'var(--accent)', opacity: 0.7 }}
+                            content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                const point = payload[0].payload as (typeof data)[number];
+                                return (
+                                    <div className="bg-popover text-popover-foreground rounded-lg border px-3 py-2 text-xs shadow-md" dir="rtl">
+                                        <div className="font-medium">{monthName(point.month)}</div>
+                                        <div className="mt-0.5 text-sm font-bold tabular-nums">
+                                            {fmtAmount(point.current)} {t('common.currency')}
+                                        </div>
+                                        {hasPrev && (
+                                            <div className="text-muted-foreground tabular-nums">
+                                                {year - 1}: {fmtAmount(point.prev)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }}
+                        />
+                        {hasPrev && <Bar dataKey="prev" fill="var(--muted-foreground)" fillOpacity={0.45} radius={[3, 3, 0, 0]} maxBarSize={16} />}
+                        <Bar dataKey="current" fill="var(--chart-2)" radius={[3, 3, 0, 0]} maxBarSize={16} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
     );
 }
 
@@ -355,7 +465,9 @@ function CustomersSection({ from, to, inactiveDays, inactiveCustomers, dropPerce
                             <TableHead>{t('customers.name')}</TableHead>
                             <TableHead>{t('reports.last_order')}</TableHead>
                             <TableHead className="text-end">{t('delivery.balance')}</TableHead>
-                            <TableHead />
+                            <TableHead>
+                                <span className="sr-only">{t('common.actions')}</span>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -492,7 +604,7 @@ function DriversSection({ from, to, collectionsByDriver, custodyByDriver }: Repo
                                 <TableRow key={row.name}>
                                     <TableCell className="font-medium">{row.name}</TableCell>
                                     <TableCell
-                                        className={`text-end font-bold tabular-nums ${parseFloat(row.balance) > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700'}`}
+                                        className={`text-end font-bold tabular-nums ${parseFloat(row.balance) > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}
                                     >
                                         {fmtAmount(row.balance)}
                                     </TableCell>

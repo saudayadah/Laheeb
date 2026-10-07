@@ -291,6 +291,45 @@ class PayrollService
     }
 
     /**
+     * Unlock a reviewed/approved run so the owner can keep editing it.
+     * Nothing is posted to the ledger before pay(), so this is always safe.
+     */
+    public function reopen(PayrollRun $run, User $user): PayrollRun
+    {
+        if (! in_array($run->status, ['reviewed', 'approved'], true)) {
+            throw ValidationException::withMessages(['run' => __('payroll.bad_transition')]);
+        }
+
+        $run->update([
+            'status' => 'draft',
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+            'approved_by' => null,
+            'approved_at' => null,
+        ]);
+
+        activity()->causedBy($user)->performedOn($run)->log('payroll.reopened');
+
+        return $run;
+    }
+
+    /**
+     * Remove an unpaid run created by mistake (wrong month, duplicate).
+     */
+    public function deleteRun(PayrollRun $run, User $user): void
+    {
+        if ($run->status === 'paid') {
+            throw ValidationException::withMessages(['run' => __('payroll.locked')]);
+        }
+
+        DB::transaction(function () use ($run, $user) {
+            activity()->causedBy($user)->performedOn($run)->log('payroll.deleted');
+            $run->lines()->delete();
+            $run->delete();
+        });
+    }
+
+    /**
      * Pay the whole approved run: recover advances/charges on each employee's
      * ledger, then book the salaries as ONE expense per payment source.
      */

@@ -99,6 +99,7 @@ export default function CustomerForm({
                                     value={data.code ?? ''}
                                     onChange={(e) => setData('code', e.target.value)}
                                     placeholder={suggestedCode ?? ''}
+                                    dir="ltr"
                                 />
                             </Field>
                             <Field label={t('customers.name')} htmlFor="name" error={errors.name}>
@@ -386,7 +387,7 @@ function PricesPanel({
                 {prices.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('common.no_results')}</p>
                 ) : (
-                    <div className="rounded-lg border">
+                    <div className="rounded-xl border">
                         <Table>
                             <TableHeader>
                                 <TableRow>

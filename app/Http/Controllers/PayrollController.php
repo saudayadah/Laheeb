@@ -101,6 +101,24 @@ class PayrollController extends Controller
         return back()->with('success', __('payroll.approved'));
     }
 
+    public function reopen(Request $request, PayrollRun $run): RedirectResponse
+    {
+        abort_unless($request->user()->can('payroll.manage'), 403);
+
+        $this->service->reopen($run, $request->user());
+
+        return back()->with('success', __('payroll.reopened'));
+    }
+
+    public function destroy(Request $request, PayrollRun $run): RedirectResponse
+    {
+        abort_unless($request->user()->can('payroll.manage'), 403);
+
+        $this->service->deleteRun($run, $request->user());
+
+        return redirect()->route('payroll.index')->with('success', __('common.deleted'));
+    }
+
     public function pay(Request $request, PayrollRun $run): RedirectResponse
     {
         abort_unless($request->user()->can('payroll.approve'), 403);
