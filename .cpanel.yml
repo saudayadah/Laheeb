@@ -1,7 +1,8 @@
 ---
-# cPanel "Deploy HEAD Commit": the app is served directly from this clone
-# (/home/laheebsa/repositories/Laheeb), so deployment just refreshes Laravel.
-# Every step is guarded so the very first deploys (before .env exists) stay green.
+# cPanel "Deploy HEAD Commit": the app is served from this clone
+# (/home/laheebsa/repositories/Laheeb) with the domain docroot at
+# /home/laheebsa/public_html holding a synced copy of public/.
+# Every step is guarded so deploys stay green even mid-setup.
 deployment:
   tasks:
     - export APPDIR=/home/laheebsa/repositories/Laheeb
@@ -10,3 +11,6 @@ deployment:
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan config:cache || true'
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan route:cache || true'
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan view:cache || true'
+    # Sync the web root: copy public/ then re-point index.php at the app dir.
+    - cp -a "$APPDIR/public/." /home/laheebsa/public_html/
+    - sed -i "s|__DIR__\.'/\.\./|'/home/laheebsa/repositories/Laheeb/|g" /home/laheebsa/public_html/index.php
