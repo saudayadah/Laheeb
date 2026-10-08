@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount } from '@/lib/format';
+import { fmtAmount, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { type Paginated } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -57,6 +57,7 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
     const { t } = useTrans();
     const [advanceOpen, setAdvanceOpen] = useState(false);
     const [chargeOpen, setChargeOpen] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     return (
         <AppLayout breadcrumbs={[{ title: t('advances.title'), href: '/advances' }]}>
@@ -82,6 +83,12 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                         {t('advances.outstanding_total')} ({t('common.currency')})
                     </div>
                 </div>
+
+                {actionError && (
+                    <div className="rounded-lg border border-red-300 bg-red-100/60 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+                        {actionError}
+                    </div>
+                )}
 
                 <div className="rounded-xl border">
                     <Table>
@@ -128,7 +135,17 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                                                     variant="ghost"
                                                     size="icon"
                                                     className="size-8 text-emerald-700 dark:text-emerald-400"
-                                                    onClick={() => router.post(route('advances.approve', advance.id), {}, { preserveScroll: true })}
+                                                    onClick={() => {
+                                                        setActionError(null);
+                                                        router.post(
+                                                            route('advances.approve', advance.id),
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                                onError: (e) => setActionError(Object.values(e)[0] as string),
+                                                            },
+                                                        );
+                                                    }}
                                                 >
                                                     <Check className="size-4" />
                                                     <span className="sr-only">{t('expenses.approve')}</span>
@@ -191,9 +208,17 @@ export default function AdvancesIndex({ advances, charges, employees, outstandin
                                                         variant="ghost"
                                                         size="icon"
                                                         className="size-8 text-emerald-700 dark:text-emerald-400"
-                                                        onClick={() =>
-                                                            router.post(route('advances.charges.approve', charge.id), {}, { preserveScroll: true })
-                                                        }
+                                                        onClick={() => {
+                                                            setActionError(null);
+                                                            router.post(
+                                                                route('advances.charges.approve', charge.id),
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onError: (e) => setActionError(Object.values(e)[0] as string),
+                                                                },
+                                                            );
+                                                        }}
                                                     >
                                                         <Check className="size-4" />
                                                         <span className="sr-only">{t('expenses.approve')}</span>
@@ -219,7 +244,7 @@ function AdvanceDialog({ open, onOpenChange, employees }: { open: boolean; onOpe
     const { t } = useTrans();
     const { data, setData, post, processing, errors, reset } = useForm({
         employee_id: '' as number | '',
-        advance_date: new Date().toISOString().slice(0, 10),
+        advance_date: localToday(),
         amount: '',
         paid_from: 'counter_cash',
         plan: 'full',
@@ -329,7 +354,7 @@ function ChargeDialog({ open, onOpenChange, employees }: { open: boolean; onOpen
     const { t } = useTrans();
     const { data, setData, post, processing, errors, reset } = useForm({
         employee_id: '' as number | '',
-        charge_date: new Date().toISOString().slice(0, 10),
+        charge_date: localToday(),
         type: 'fine',
         amount: '',
         notes: '',

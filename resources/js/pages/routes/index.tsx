@@ -100,7 +100,7 @@ export default function RoutesIndex({ routes, drivers, canManage }: RoutesPagePr
                     </div>
                 )}
 
-                <RouteDialog key={editing?.id ?? 'new'} open={open} onOpenChange={setOpen} routeItem={editing} drivers={drivers} />
+                <RouteDialog key={`${editing?.id ?? 'new'}-${open}`} open={open} onOpenChange={setOpen} routeItem={editing} drivers={drivers} />
             </div>
         </AppLayout>
     );

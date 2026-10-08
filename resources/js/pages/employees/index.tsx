@@ -143,7 +143,7 @@ export default function EmployeesIndex({ employees, users, totalSalaries, totalO
                     </div>
                 )}
 
-                <EmployeeDialog key={editing?.id ?? 'new'} open={open} onOpenChange={setOpen} employee={editing} users={users} />
+                <EmployeeDialog key={`${editing?.id ?? 'new'}-${open}`} open={open} onOpenChange={setOpen} employee={editing} users={users} />
             </div>
         </AppLayout>
     );

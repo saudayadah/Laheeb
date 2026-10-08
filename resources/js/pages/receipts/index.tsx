@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount } from '@/lib/format';
+import { fmtAmount, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { type IdName, type Paginated } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -207,7 +207,7 @@ function CreateReceiptDialog({
     const [customerId, setCustomerId] = useState('');
     const [groupId, setGroupId] = useState('');
     const [amount, setAmount] = useState('');
-    const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState(() => localToday());
     const [method, setMethod] = useState('cash');
     const [reference, setReference] = useState('');
     const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
@@ -222,11 +222,20 @@ function CreateReceiptDialog({
             setOpenInvoices([]);
             return;
         }
+        // Guard against out-of-order responses: only the latest request may set state.
+        let stale = false;
         const params = scope === 'customer' ? `customer_id=${id}` : `customer_group_id=${id}`;
         fetch(route('receipts.open-invoices') + '?' + params, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
-            .then((data) => setOpenInvoices(data.invoices ?? []))
-            .catch(() => setOpenInvoices([]));
+            .then((data) => {
+                if (!stale) setOpenInvoices(data.invoices ?? []);
+            })
+            .catch(() => {
+                if (!stale) setOpenInvoices([]);
+            });
+        return () => {
+            stale = true;
+        };
     }, [scope, customerId, groupId]);
 
     // FIFO preview of where the money will land.

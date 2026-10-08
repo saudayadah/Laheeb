@@ -14,6 +14,7 @@ use App\Services\PriceResolver;
 use App\Services\ReceiptService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -148,7 +149,7 @@ class DeliveryController extends Controller
             'returns.*.qty' => ['required', 'integer', 'min:0', 'max:100000'],
             'returns.*.condition' => ['required', 'in:good,damaged'],
             'payment_method' => ['required', 'in:cash,mada,credit'],
-            'idempotency_key' => ['required', 'string', 'max:64'],
+            'idempotency_key' => ['required', 'string', 'max:60'],
         ]);
 
         $user = $request->user();
@@ -179,8 +180,11 @@ class DeliveryController extends Controller
             $invoice = $existing;
         }
 
+        // Runs on retries too: if the invoice committed but the returns threw
+        // (e.g. exceeds-remainder), the retry must still attempt the credit
+        // note — its ':ret' idempotency key dedupes the success case.
         $returns = array_values(array_filter($validated['returns'] ?? [], fn ($r) => (int) $r['qty'] > 0));
-        if ($returns !== [] && $existing === null) {
+        if ($returns !== []) {
             $this->invoices->createCreditNote(
                 $invoice,
                 $customer,
@@ -204,7 +208,7 @@ class DeliveryController extends Controller
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
-            'idempotency_key' => ['required', 'string', 'max:64'],
+            'idempotency_key' => ['required', 'string', 'max:60'],
         ]);
 
         $receipt = app(ReceiptService::class)->create(
@@ -231,7 +235,7 @@ class DeliveryController extends Controller
         abort_unless($request->user()->can('deliveries.own'), 403);
 
         $validated = $request->validate([
-            'expense_category_id' => ['required', 'integer', 'exists:expense_categories,id'],
+            'expense_category_id' => ['required', 'integer', Rule::exists('expense_categories', 'id')->where('active', true)->where('kind', 'operating')],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:100000'],
             'note' => ['nullable', 'string', 'max:500'],
             'photo' => ['nullable', 'image', 'max:5120'],

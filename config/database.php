@@ -44,6 +44,12 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
+            // spatie/laravel-backup reads this to locate mysqldump on hosts
+            // where it is off PATH (DEPLOY.md documents DB_DUMP_PATH).
+            'dump' => [
+                'dump_binary_path' => env('DB_DUMP_PATH', ''),
+                'useSingleTransaction' => true,
+            ],
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
@@ -63,6 +69,10 @@ return [
         ],
 
         'mariadb' => [
+            'dump' => [
+                'dump_binary_path' => env('DB_DUMP_PATH', ''),
+                'useSingleTransaction' => true,
+            ],
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),

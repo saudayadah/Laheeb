@@ -20,8 +20,13 @@ class ReportController extends Controller
         abort_unless($request->user()->can('reports.view'), 403);
 
         $year = (int) $request->input('year', now()->year);
-        $from = Carbon::parse($request->input('from', today()->startOfMonth()->toDateString()));
-        $to = Carbon::parse($request->input('to', today()->toDateString()));
+
+        try {
+            $from = Carbon::parse($request->input('from', today()->startOfMonth()->toDateString()));
+            $to = Carbon::parse($request->input('to', today()->toDateString()));
+        } catch (\Throwable) {
+            [$from, $to] = [today()->startOfMonth(), today()];
+        }
 
         return Inertia::render('reports/index', [
             'year' => $year,

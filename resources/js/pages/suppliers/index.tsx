@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount } from '@/lib/format';
+import { fmtAmount, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { HandCoins, LoaderCircle, Pencil, Plus, Warehouse } from 'lucide-react';
@@ -189,7 +189,7 @@ function PayDialog({ supplier, onClose }: { supplier: SupplierRow; onClose: () =
     const { t } = useTrans();
     const { data, setData, post, processing, errors } = useForm({
         amount: '',
-        payment_date: new Date().toISOString().slice(0, 10),
+        payment_date: localToday(),
         method: 'bank',
         reference: '',
         notes: '',

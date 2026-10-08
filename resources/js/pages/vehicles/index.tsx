@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount, fmtInt } from '@/lib/format';
+import { fmtAmount, fmtInt, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, useForm } from '@inertiajs/react';
 import { Car, LoaderCircle, Pencil, Plus, Wrench } from 'lucide-react';
@@ -229,7 +229,7 @@ function MaintenanceDialog({ open, onOpenChange, vehicles }: { open: boolean; on
     const { t } = useTrans();
     const { data, setData, post, processing, errors, reset } = useForm({
         vehicle_id: '' as number | '',
-        service_date: new Date().toISOString().slice(0, 10),
+        service_date: localToday(),
         task: '',
         odometer: '',
         next_due_date: '',

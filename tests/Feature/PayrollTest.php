@@ -257,3 +257,45 @@ test('employees hired after the run was created can be pulled in', function () {
 
     expect(fn () => $this->service->syncEmployees($run->refresh(), $this->owner))->toThrow(ValidationException::class);
 });
+
+test('a stale prefill from a second open run never over-recovers a settled advance', function () {
+    $employee = Employee::factory()->create(['basic_salary' => '3000.00']);
+
+    $this->service->createAdvance([
+        'employee_id' => $employee->id, 'amount' => '500', 'paid_from' => 'bank', 'plan' => 'full',
+    ], $this->owner);
+
+    // Two runs open at once: both prefill the SAME 500.00 due.
+    $october = $this->service->createRun('2026-10', $this->owner);
+    $november = $this->service->createRun('2026-11', $this->owner);
+
+    $payAll = function ($run) {
+        $this->service->review($run, $this->owner);
+        $this->service->approve($run, $this->owner);
+        $methods = $run->lines()->pluck('id')->mapWithKeys(fn ($id) => [$id => 'bank'])->all();
+        $this->service->pay($run, $methods, $this->owner);
+    };
+
+    $payAll($october); // settles the advance
+
+    $payAll($november); // stale 500.00 prefill must clamp to 0.00
+
+    $novLine = $november->lines()->first()->refresh();
+
+    expect((string) $novLine->advance_recovery)->toBe('0.00')
+        ->and((string) $novLine->net)->toBe('3000.00')
+        ->and($employee->outstanding())->toBe('0.00')
+        ->and(LedgerEntry::balance(LedgerEntry::EMPLOYEE, $employee->id))->toBe('0.00');
+});
+
+test('adding employees to a reviewed run drops it back to draft for a fresh review', function () {
+    Employee::factory()->create(['basic_salary' => '3000.00']);
+    $run = $this->service->createRun('2026-10', $this->owner);
+    $this->service->review($run, $this->owner);
+
+    Employee::factory()->create(['basic_salary' => '2000.00']);
+    $this->service->syncEmployees($run, $this->owner);
+
+    expect($run->refresh()->status)->toBe('draft')
+        ->and($run->reviewed_by)->toBeNull();
+});

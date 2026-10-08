@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\LedgerEntry;
 use App\Services\ReportService;
 use App\Support\AppSettings;
 use Illuminate\Http\Request;
@@ -33,9 +34,13 @@ class StatementController extends Controller
             'to' => $to->toDateString(),
         ]);
 
+        // The WhatsApp message quotes the LIVE balance, not the range's
+        // closing row, so future-dated or out-of-range entries can't mislead.
+        $liveBalance = LedgerEntry::balance(LedgerEntry::CUSTOMER, $customer->id);
+
         $waText = __('statements.wa_message', [
             'name' => $customer->name,
-            'balance' => $statement['closing'],
+            'balance' => $liveBalance,
             'link' => $publicUrl,
         ]);
 

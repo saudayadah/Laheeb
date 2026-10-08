@@ -29,7 +29,10 @@ class ReceivablesService
             return ['rows' => [], 'totals' => $this->emptyTotals()];
         }
 
-        $customers = Customer::with('group:id,name')
+        // withTrashed: a soft-deleted customer with a live balance must still
+        // appear here, or this screen drifts from the dashboard's ledger sum.
+        $customers = Customer::withTrashed()
+            ->with('group:id,name')
             ->whereIn('id', $balances->keys())
             ->get(['id', 'code', 'name', 'customer_group_id', 'credit_days', 'phone', 'whatsapp'])
             ->keyBy('id');

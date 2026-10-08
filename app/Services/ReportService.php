@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class ReportService
 {
     /**
-     * The owner's monthly sheet: per month of a year â€”
+     * The owner's monthly sheet: per month of a year —
      * total / cash / credit / mada sales (net of credit notes),
      * expenses (split), net and net-cash.
      */
@@ -54,7 +54,7 @@ class ReportService
             ->get();
 
         // Salaries and rent split out, like the owner's current sheet.
-        $specialIds = ExpenseCategory::whereIn('name_ar', ['Ø±ÙˆØ§ØªØ¨', 'Ø¥ÙŠØ¬Ø§Ø±Ø§Øª'])->pluck('id', 'name_ar');
+        $specialIds = ExpenseCategory::whereIn('name_ar', ['رواتب', 'إيجارات'])->pluck('id', 'name_ar');
         $specials = Expense::query()
             ->where('status', 'approved')
             ->whereYear('expense_date', $year)
@@ -102,8 +102,8 @@ class ReportService
                 'expenses_total' => $expensesTotal,
                 'expenses_cash' => $expensesCash,
                 'expenses_bank' => $expensesBank,
-                'salaries' => $specialSum('Ø±ÙˆØ§ØªØ¨'),
-                'rent' => $specialSum('Ø¥ÙŠØ¬Ø§Ø±Ø§Øª'),
+                'salaries' => $specialSum('رواتب'),
+                'rent' => $specialSum('إيجارات'),
                 'net' => Money::subtract($total, $expensesTotal),
                 'net_cash' => Money::subtract(Money::add($cash, $mada), $expensesCash),
             ];
@@ -156,6 +156,18 @@ class ReportService
 
     public function salesByProduct(Carbon $from, Carbon $to): array
     {
+        // Returns reduce the product's sales, same as the monthly sheet.
+        $credits = DB::table('credit_note_lines')
+            ->join('credit_notes', 'credit_notes.id', '=', 'credit_note_lines.credit_note_id')
+            ->leftJoin('products', 'products.id', '=', 'credit_note_lines.product_id')
+            ->where('credit_notes.status', 'posted')
+            ->whereDate('credit_notes.note_date', '>=', $from)
+            ->whereDate('credit_notes.note_date', '<=', $to)
+            ->groupBy('credit_note_lines.product_id', 'products.name_ar')
+            ->selectRaw("COALESCE(products.name_ar, 'أخرى') as name, SUM(credit_note_lines.qty) as qty, SUM(credit_note_lines.line_total) as total")
+            ->get()
+            ->keyBy('name');
+
         return DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->leftJoin('products', 'products.id', '=', 'invoice_lines.product_id')
@@ -163,13 +175,16 @@ class ReportService
             ->whereDate('invoices.invoice_date', '>=', $from)
             ->whereDate('invoices.invoice_date', '<=', $to)
             ->groupBy('invoice_lines.product_id', 'products.name_ar')
-            ->selectRaw("COALESCE(products.name_ar, 'Ø£Ø®Ø±Ù‰') as name, SUM(invoice_lines.qty) as qty, SUM(invoice_lines.line_total) as total")
+            ->selectRaw("COALESCE(products.name_ar, 'أخرى') as name, SUM(invoice_lines.qty) as qty, SUM(invoice_lines.line_total) as total")
             ->orderByDesc(DB::raw('SUM(invoice_lines.line_total)'))
             ->get()
             ->map(fn ($row) => [
                 'name' => $row->name,
-                'qty' => (int) $row->qty,
-                'total' => Money::add((string) $row->total, '0.00'),
+                'qty' => (int) $row->qty - (int) ($credits[$row->name]->qty ?? 0),
+                'total' => Money::subtract(
+                    Money::add((string) $row->total, '0.00'),
+                    Money::add((string) ($credits[$row->name]->total ?? '0'), '0.00'),
+                ),
             ])
             ->all();
     }
@@ -187,12 +202,29 @@ class ReportService
             ->orderByDesc(DB::raw('SUM(invoice_lines.line_total)'))
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => [
-                'name' => $row->name,
-                'code' => $row->code,
-                'qty' => (int) $row->qty,
-                'total' => Money::add((string) $row->total, '0.00'),
-            ])
+            ->map(function ($row) use ($from, $to) {
+                static $credits = null;
+                $credits ??= DB::table('credit_note_lines')
+                    ->join('credit_notes', 'credit_notes.id', '=', 'credit_note_lines.credit_note_id')
+                    ->join('customers', 'customers.id', '=', 'credit_notes.customer_id')
+                    ->where('credit_notes.status', 'posted')
+                    ->whereDate('credit_notes.note_date', '>=', $from)
+                    ->whereDate('credit_notes.note_date', '<=', $to)
+                    ->groupBy('credit_notes.customer_id', 'customers.code')
+                    ->selectRaw('customers.code, SUM(credit_note_lines.qty) as qty, SUM(credit_note_lines.line_total) as total')
+                    ->get()
+                    ->keyBy('code');
+
+                return [
+                    'name' => $row->name,
+                    'code' => $row->code,
+                    'qty' => (int) $row->qty - (int) ($credits[$row->code]->qty ?? 0),
+                    'total' => Money::subtract(
+                        Money::add((string) $row->total, '0.00'),
+                        Money::add((string) ($credits[$row->code]->total ?? '0'), '0.00'),
+                    ),
+                ];
+            })
             ->all();
     }
 
@@ -209,15 +241,35 @@ class ReportService
             ->selectRaw('delivery_routes.name, SUM(invoice_lines.qty) as qty, SUM(invoice_lines.line_total) as total')
             ->orderByDesc(DB::raw('SUM(invoice_lines.line_total)'))
             ->get()
-            ->map(fn ($row) => [
-                'name' => $row->name ?? __('orders.no_route'),
-                'qty' => (int) $row->qty,
-                'total' => Money::add((string) $row->total, '0.00'),
-            ])
+            ->map(function ($row) use ($from, $to) {
+                static $credits = null;
+                $credits ??= DB::table('credit_note_lines')
+                    ->join('credit_notes', 'credit_notes.id', '=', 'credit_note_lines.credit_note_id')
+                    ->leftJoin('customers', 'customers.id', '=', 'credit_notes.customer_id')
+                    ->leftJoin('delivery_routes', 'delivery_routes.id', '=', 'customers.delivery_route_id')
+                    ->where('credit_notes.status', 'posted')
+                    ->whereDate('credit_notes.note_date', '>=', $from)
+                    ->whereDate('credit_notes.note_date', '<=', $to)
+                    ->groupBy('customers.delivery_route_id', 'delivery_routes.name')
+                    ->selectRaw('delivery_routes.name, SUM(credit_note_lines.qty) as qty, SUM(credit_note_lines.line_total) as total')
+                    ->get()
+                    ->keyBy(fn ($r) => $r->name ?? '');
+
+                $key = $row->name ?? '';
+
+                return [
+                    'name' => $row->name ?? __('orders.no_route'),
+                    'qty' => (int) $row->qty - (int) ($credits[$key]->qty ?? 0),
+                    'total' => Money::subtract(
+                        Money::add((string) $row->total, '0.00'),
+                        Money::add((string) ($credits[$key]->total ?? '0'), '0.00'),
+                    ),
+                ];
+            })
             ->all();
     }
 
-    /** Active wholesale customers with no order for N days â€” catch them early. */
+    /** Active wholesale customers with no order for N days — catch them early. */
     public function inactiveCustomers(int $days = 3): array
     {
         $cutoff = today()->subDays($days);
@@ -269,8 +321,10 @@ class ReportService
             ->selectRaw('invoices.customer_id, SUM(invoice_lines.qty) as qty')
             ->pluck('qty', 'customer_id');
 
-        $current = $week(today()->subDays(6), today());
-        $previous = $week(today()->subDays(13), today()->subDays(7));
+        // Both windows end YESTERDAY so they compare 7 COMPLETE days —
+        // including today's partial day flagged every steady customer at dawn.
+        $current = $week(today()->subDays(7), today()->subDays(1));
+        $previous = $week(today()->subDays(14), today()->subDays(8));
 
         $customers = Customer::whereIn('id', $previous->keys())->pluck('name', 'id');
 
@@ -286,7 +340,7 @@ class ReportService
             if ($drop >= $percent) {
                 $rows[] = [
                     'id' => (int) $customerId,
-                    'name' => $customers[$customerId] ?? 'ØŸ',
+                    'name' => $customers[$customerId] ?? '؟',
                     'previous' => (int) $prevQty,
                     'current' => $currQty,
                     'drop' => $drop,
@@ -299,7 +353,7 @@ class ReportService
         return array_slice($rows, 0, 50);
     }
 
-    /** Who is still holding cash (ØºÙŠØ± Ù…Ø­ØµÙ„ per driver). */
+    /** Who is still holding cash (غير محصل per driver). */
     public function custodyByDriver(): array
     {
         return LedgerEntry::query()

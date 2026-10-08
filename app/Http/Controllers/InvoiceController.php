@@ -142,6 +142,7 @@ class InvoiceController extends Controller
             'items.*.qty' => ['required', 'integer', 'min:0', 'max:100000'],
             'items.*.condition' => ['required', 'in:good,damaged'],
             'reason' => ['required', 'string', 'max:255'],
+            'idempotency_key' => ['nullable', 'string', 'max:60'],
         ]);
 
         $this->service->createCreditNote(
@@ -150,6 +151,7 @@ class InvoiceController extends Controller
             $validated['items'],
             $validated['reason'],
             $request->user(),
+            idempotencyKey: $validated['idempotency_key'] ?? null,
         );
 
         return back()->with('success', __('invoices.credit_note_created'));

@@ -132,7 +132,7 @@ export default function ReceivablesIndex({ rows, totals, canReceipt }: Receivabl
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
                                                     <Button variant="outline" size="sm" asChild>
-                                                        <Link href={route('receipts.index', { customer_id: row.customer.id })}>
+                                                        <Link href={route('receipts.index', { search: row.customer.code })}>
                                                             <HandCoins className="size-4" />
                                                             {t('receivables.take_payment')}
                                                         </Link>

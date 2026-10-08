@@ -228,32 +228,60 @@ function CollectCard({ customerId }: { customerId: number }) {
     const { t } = useTrans();
     const [amount, setAmount] = useState('');
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    // One key per collection: a retry after a network hiccup reuses it,
+    // so the server can never post the same payment twice.
+    const keyRef = useRef(crypto.randomUUID());
+
+    const sanitize = (value: string) => {
+        const cleaned = value.replace(/[^\d.]/g, '');
+        const dot = cleaned.indexOf('.');
+        return dot === -1 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
+    };
 
     const collect = () => {
         if (!amount) return;
         setSaving(true);
-        router.post(route('delivery.collect', customerId), { amount, idempotency_key: crypto.randomUUID() }, { onFinish: () => setSaving(false) });
+        setError(null);
+        router.post(
+            route('delivery.collect', customerId),
+            { amount, idempotency_key: keyRef.current },
+            {
+                onSuccess: () => {
+                    keyRef.current = crypto.randomUUID();
+                },
+                onError: (errors) => setError(Object.values(errors)[0] as string),
+                onFinish: () => setSaving(false),
+            },
+        );
     };
 
     return (
-        <div className="flex items-end gap-2 rounded-xl border border-dashed p-3">
-            <div className="flex-1">
-                <div className="text-muted-foreground mb-1 text-xs font-medium">{t('receipts.collect')}</div>
-                <input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    aria-label={t('receipts.collect')}
-                    className="border-input h-11 w-full rounded-lg border px-2 text-center text-lg font-semibold tabular-nums"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                />
+        <div className="flex flex-col gap-2 rounded-xl border border-dashed p-3">
+            <div className="flex items-end gap-2">
+                <div className="flex-1">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium">{t('receipts.collect')}</div>
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        aria-label={t('receipts.collect')}
+                        className="border-input h-11 w-full rounded-lg border px-2 text-center text-lg font-semibold tabular-nums"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(sanitize(e.target.value))}
+                    />
+                </div>
+                <Button className="h-11" onClick={collect} disabled={!amount || saving}>
+                    {saving ? <LoaderCircle className="size-4 animate-spin" /> : <HandCoins className="size-4" />}
+                    {t('receipts.collect')}
+                </Button>
             </div>
-            <Button className="h-11" onClick={collect} disabled={!amount || saving}>
-                {saving ? <LoaderCircle className="size-4 animate-spin" /> : <HandCoins className="size-4" />}
-                {t('receipts.collect')}
-            </Button>
+            {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                    {error}
+                </div>
+            )}
         </div>
     );
 }

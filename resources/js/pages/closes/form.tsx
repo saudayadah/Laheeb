@@ -37,12 +37,14 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
     );
     const [notes, setNotes] = useState(existing?.notes ?? '');
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const counted = useMemo(() => denominations.reduce((sum, d) => sum + d * (parseInt(counts[d] ?? '', 10) || 0), 0), [denominations, counts]);
     const variance = counted - parseFloat(expected);
 
     const submit = () => {
         setSaving(true);
+        setError(null);
         router.post(
             route('closes.store'),
             {
@@ -52,7 +54,10 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
                 counts: Object.fromEntries(denominations.map((d) => [d, parseInt(counts[d] ?? '', 10) || 0])),
                 notes: notes || null,
             },
-            { onFinish: () => setSaving(false) },
+            {
+                onError: (e) => setError(Object.values(e)[0] as string),
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
@@ -158,6 +163,12 @@ export default function CloseForm({ type, closeableId, driverName, date, expecte
                 </div>
 
                 {type === 'driver' && <p className="text-muted-foreground text-xs">{t('closes.shortage_note')}</p>}
+
+                {error && (
+                    <div className="rounded-lg border border-red-300 bg-red-100/60 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+                        {error}
+                    </div>
+                )}
 
                 {!approved && (
                     <>

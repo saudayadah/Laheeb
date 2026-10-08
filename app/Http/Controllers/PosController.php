@@ -73,7 +73,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
             'payment_method' => ['required', 'in:cash,mada'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
             'idempotency_key' => ['required', 'string', 'max:64'],
         ]);
 

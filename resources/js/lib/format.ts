@@ -30,3 +30,6 @@ export function fmtInt(value: number | null | undefined): string {
     if (value === null || value === undefined) return '—';
     return intFormatter.format(value);
 }
+
+/** Today's date in the user's local timezone, as "YYYY-MM-DD". */
+export const localToday = () => new Date().toLocaleDateString('en-CA');

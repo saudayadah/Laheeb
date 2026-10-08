@@ -38,7 +38,12 @@ abstract class BaseImporter
             $value = (string) (int) $value;
         }
 
-        $value = trim((string) $value);
+        // Strip invisible bidi/zero-width marks and turn NBSP into a plain space
+        // before trimming — copy-pasted Arabic text carries them routinely.
+        $value = str_replace("\u{00A0}", ' ', (string) $value);
+        $value = preg_replace('/[\x{200B}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{FEFF}]/u', '', $value) ?? $value;
+
+        $value = trim($value);
 
         return $value === '' ? null : $value;
     }
@@ -51,12 +56,22 @@ abstract class BaseImporter
             return null;
         }
 
-        // Accept Arabic decimal separator and Arabic-Indic digits.
+        // Accept Arabic decimal separator, Arabic thousands separator and Arabic-Indic digits.
         $value = strtr($value, [
             '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
             '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
-            '٫' => '.', ',' => '',
+            '٫' => '.', '٬' => '',
         ]);
+
+        // Commas are only valid as thousands separators on proper 3-digit groups
+        // ("1,234.50" yes, "1,23" or "12,34" no — likely a mistyped decimal point).
+        if (str_contains($value, ',')) {
+            if (! preg_match('/^-?\d{1,3}(,\d{3})+(\.\d+)?$/', $value)) {
+                return null;
+            }
+
+            $value = str_replace(',', '', $value);
+        }
 
         return is_numeric($value) ? $value : null;
     }

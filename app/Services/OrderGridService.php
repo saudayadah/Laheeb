@@ -98,9 +98,18 @@ class OrderGridService
             foreach ($cells as $cell) {
                 $customerId = (int) $cell['customer_id'];
 
-                $order = $orders[$customerId] ??= Order::firstOrCreate(
-                    ['order_date' => $date->copy()->startOfDay(), 'customer_id' => $customerId],
-                    ['created_by' => $userId],
+                // Row lock so an autosave landing mid-confirmDay serializes
+                // behind it and sees the fresh 'confirmed' status.
+                $order = $orders[$customerId] ??= (
+                    Order::whereDate('order_date', $date)
+                        ->where('customer_id', $customerId)
+                        ->lockForUpdate()
+                        ->first()
+                    ?? Order::create([
+                        'order_date' => $date->copy()->startOfDay(),
+                        'customer_id' => $customerId,
+                        'created_by' => $userId,
+                    ])
                 );
 
                 if ($order->isConfirmed()) {

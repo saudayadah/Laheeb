@@ -30,15 +30,18 @@ function ImportCard({ type }: { type: string }) {
     const fileInput = useRef<HTMLInputElement>(null);
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const upload = () => {
         if (!file) return;
         setUploading(true);
+        setError(null);
         router.post(
             route('imports.preview', type),
             { file },
             {
                 forceFormData: true,
+                onError: (errors) => setError(Object.values(errors)[0] as string),
                 onFinish: () => setUploading(false),
             },
         );
@@ -68,6 +71,7 @@ function ImportCard({ type }: { type: string }) {
                     className="text-muted-foreground file:bg-muted file:text-foreground w-full cursor-pointer rounded-md border p-2 text-sm file:me-3 file:cursor-pointer file:rounded file:border-0 file:px-3 file:py-1"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
+                {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
                 <Button size="sm" onClick={upload} disabled={!file || uploading}>
                     {uploading && <LoaderCircle className="size-4 animate-spin" />}
                     {t('imports.upload')}

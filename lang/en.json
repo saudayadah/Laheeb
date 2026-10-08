@@ -146,6 +146,7 @@
     "customers.credit_limit": "Credit Limit",
     "customers.credit_days": "Credit Days",
     "customers.route": "Route",
+    "customers.has_balance": "A customer with an outstanding balance cannot be deleted — settle the account first",
     "customers.no_route": "No route",
     "customers.stop_sequence": "Stop Order",
     "customers.city": "City",
@@ -371,6 +372,7 @@
     "invoices.to": "To",
     "invoices.vat_included_note": "Prices include VAT",
     "invoices.reason": "Reason",
+    "invoices.reclass_has_payments": "The invoice has posted receipts or returns — void them first, then reclassify",
 
     "credit.over_limit": "Customer is over the credit limit — credit sales blocked",
     "credit.overdue": "Customer has overdue invoices — credit sales blocked",
@@ -517,6 +519,7 @@
     "advances.charge_pending": "Charge recorded — awaiting approval",
     "advances.charge_approved": "Charge approved onto the employee",
     "advances.shortage_note": "Cash shortages need the owner's approval and move from the driver's custody to the employee account",
+    "advances.shortage_needs_driver": "A shortage charge requires an employee linked to a login (driver)",
 
     "payroll.title": "Payroll",
     "payroll.create": "New monthly run",

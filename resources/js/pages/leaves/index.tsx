@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtInt } from '@/lib/format';
+import { fmtInt, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, router, useForm } from '@inertiajs/react';
 import { CalendarOff, LoaderCircle, Plus, Undo2 } from 'lucide-react';
@@ -34,9 +34,15 @@ interface LeavesPageProps {
 export default function LeavesIndex({ leaves, employees, awayCount, overdueCount }: LeavesPageProps) {
     const { t } = useTrans();
     const [open, setOpen] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const markReturned = (leave: LeaveRow) => {
-        router.post(route('leaves.return', leave.id), { actual_return: new Date().toISOString().slice(0, 10) }, { preserveScroll: true });
+        setActionError(null);
+        router.post(
+            route('leaves.return', leave.id),
+            { actual_return: localToday() },
+            { preserveScroll: true, onError: (e) => setActionError(Object.values(e)[0] as string) },
+        );
     };
 
     return (
@@ -64,6 +70,12 @@ export default function LeavesIndex({ leaves, employees, awayCount, overdueCount
                         <div className="text-muted-foreground text-xs">{t('leaves.overdue_count')}</div>
                     </div>
                 </div>
+
+                {actionError && (
+                    <div className="rounded-lg border border-red-300 bg-red-100/60 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+                        {actionError}
+                    </div>
+                )}
 
                 {leaves.length === 0 ? (
                     <EmptyState icon={CalendarOff} message={t('leaves.empty')} />
@@ -145,7 +157,7 @@ function LeaveDialog({
     const { t } = useTrans();
     const { data, setData, post, processing, errors, reset } = useForm({
         employee_id: '' as number | '',
-        start_date: new Date().toISOString().slice(0, 10),
+        start_date: localToday(),
         expected_return: '',
         notes: '',
     });

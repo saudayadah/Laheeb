@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DailyClose;
 use App\Models\Expense;
 use App\Models\LedgerEntry;
 use App\Models\RecurringExpense;
@@ -122,6 +123,30 @@ class ExpenseService
     /** Where the money came out of. */
     private function postLedger(Expense $expense, User $user): void
     {
+        // After that day's cash was counted and approved, no expense may
+        // retroactively shrink the custody/box it was counted from.
+        if ($expense->paid_from === 'driver_cash') {
+            $locked = DailyClose::where('closeable_type', DailyClose::TYPE_DRIVER)
+                ->where('closeable_id', $expense->paid_by)
+                ->whereDate('close_date', $expense->expense_date)
+                ->where('status', 'approved')
+                ->exists();
+
+            if ($locked) {
+                throw ValidationException::withMessages(['expense' => __('closes.day_locked')]);
+            }
+        } elseif ($expense->paid_from === 'counter_cash') {
+            $locked = DailyClose::where('closeable_type', DailyClose::TYPE_COUNTER)
+                ->where('closeable_id', 0)
+                ->whereDate('close_date', $expense->expense_date)
+                ->where('status', 'approved')
+                ->exists();
+
+            if ($locked) {
+                throw ValidationException::withMessages(['expense' => __('closes.day_locked')]);
+            }
+        }
+
         [$type, $id] = match ($expense->paid_from) {
             'driver_cash' => [LedgerEntry::DRIVER, (int) $expense->paid_by],
             'bank' => [LedgerEntry::BANK, LedgerEntry::MAIN_BANK_ID],

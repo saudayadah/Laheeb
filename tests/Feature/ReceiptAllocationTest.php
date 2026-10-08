@@ -191,3 +191,17 @@ test('aging buckets split the balance by invoice age, FIFO', function () {
 
     expect($aging['totals']['balance'])->toBe('70.00');
 });
+
+test('a paid-against invoice refuses reclassification until its receipts are voided', function () {
+    $customer = Customer::factory()->create(['payment_term' => 'credit']);
+    $invoice = creditInvoice($this->invoices, $customer, $this->product, 100, $this->owner);
+
+    $this->receipts->create([
+        'customer_id' => $customer->id,
+        'amount' => '10.00',
+        'method' => 'cash',
+    ], null, $this->owner);
+
+    expect(fn () => $this->invoices->reclassify($invoice->refresh(), 'cash', $this->owner, 'test'))
+        ->toThrow(ValidationException::class);
+});

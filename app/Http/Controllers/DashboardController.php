@@ -53,11 +53,12 @@ class DashboardController extends Controller
 
             $receivables = $customerBalances->sum();
 
+            // ABS keeps over-remitting drivers in, matching the custody tab.
             $custody = LedgerEntry::query()
                 ->where('account_type', LedgerEntry::DRIVER)
                 ->groupBy('account_id')
                 ->selectRaw('account_id, SUM(debit) - SUM(credit) as balance')
-                ->havingRaw('SUM(debit) - SUM(credit) > 0.004')
+                ->havingRaw('ABS(SUM(debit) - SUM(credit)) > 0.004')
                 ->get()
                 ->sum('balance');
 

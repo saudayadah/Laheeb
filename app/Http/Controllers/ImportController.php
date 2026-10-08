@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
@@ -54,6 +55,7 @@ class ImportController extends Controller
         $path = $request->file('file')->storeAs('imports', "{$token}.{$request->file('file')->getClientOriginalExtension()}");
 
         try {
+            $this->configureCsvEncoding($path);
             $rowsImport = new RowsImport;
             Excel::import($rowsImport, Storage::path($path));
             $result = $importer->validateRows($rowsImport->rows, $request->user());
@@ -82,39 +84,65 @@ class ImportController extends Controller
         $request->validate(['token' => ['required', 'uuid']]);
 
         $token = $request->string('token')->toString();
-        $stored = Cache::get("import.{$token}");
 
-        if ($stored === null || $stored['type'] !== $type) {
+        // A double-submit (double click, browser retry) must never import twice.
+        $lock = Cache::lock("import.commit.{$token}", 120);
+
+        if (! $lock->get()) {
             return redirect()->route('imports.index')->with('error', __('imports.file_error'));
         }
-
-        $importer = ImporterRegistry::make($type);
 
         try {
-            $rowsImport = new RowsImport;
-            Excel::import($rowsImport, Storage::path($stored['path']));
-            $result = $importer->validateRows($rowsImport->rows, $request->user());
-        } catch (Throwable) {
-            return redirect()->route('imports.index')->with('error', __('imports.file_error'));
+            $stored = Cache::get("import.{$token}");
+
+            if ($stored === null || $stored['type'] !== $type) {
+                return redirect()->route('imports.index')->with('error', __('imports.file_error'));
+            }
+
+            $importer = ImporterRegistry::make($type);
+
+            try {
+                $this->configureCsvEncoding($stored['path']);
+                $rowsImport = new RowsImport;
+                Excel::import($rowsImport, Storage::path($stored['path']));
+                $result = $importer->validateRows($rowsImport->rows, $request->user());
+            } catch (Throwable) {
+                return redirect()->route('imports.index')->with('error', __('imports.file_error'));
+            }
+
+            $validRows = array_values(array_filter($result, fn ($r) => $r['errors'] === []));
+
+            if ($validRows === []) {
+                return redirect()->route('imports.index')->with('error', __('imports.nothing_to_import'));
+            }
+
+            try {
+                $count = DB::transaction(fn () => $importer->commit($validRows, $request->user()));
+            } catch (Throwable) {
+                // Keep the cached token and uploaded file so the user can retry.
+                return redirect()->route('imports.index')->with('error', __('imports.file_error'));
+            }
+
+            activity()
+                ->causedBy($request->user())
+                ->withProperties(['type' => $type, 'count' => $count])
+                ->log('import.committed');
+
+            Cache::forget("import.{$token}");
+            Storage::delete($stored['path']);
+
+            return redirect()->route('imports.index')
+                ->with('success', __('imports.done', ['count' => $count]));
+        } finally {
+            $lock->release();
         }
+    }
 
-        $validRows = array_values(array_filter($result, fn ($r) => $r['errors'] === []));
-
-        if ($validRows === []) {
-            return redirect()->route('imports.index')->with('error', __('imports.nothing_to_import'));
+    /** CSV/TXT uploads are often Windows-1256 Arabic — sniff the encoding before reading. */
+    private function configureCsvEncoding(string $path): void
+    {
+        if (in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['csv', 'txt'], true)) {
+            config(['excel.imports.csv.input_encoding' => Csv::guessEncoding(Storage::path($path))]);
         }
-
-        $count = DB::transaction(fn () => $importer->commit($validRows, $request->user()));
-
-        activity()
-            ->causedBy($request->user())
-            ->withProperties(['type' => $type, 'count' => $count])
-            ->log('import.committed');
-
-        Cache::forget("import.{$token}");
-        Storage::delete($stored['path']);
-
-        return redirect()->route('imports.index')
-            ->with('success', __('imports.done', ['count' => $count]));
     }
 }

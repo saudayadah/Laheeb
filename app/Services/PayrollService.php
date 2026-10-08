@@ -136,6 +136,13 @@ class PayrollService
                 return $charge;
             }
 
+            // A shortage must move the debt OFF someone's custody; without a
+            // linked login there is no custody account and ledger:verify
+            // would flag the one-legged charge forever.
+            if ($charge->type === 'shortage' && $charge->employee->user_id === null) {
+                throw ValidationException::withMessages(['charge' => __('advances.shortage_needs_driver')]);
+            }
+
             $charge->update(['status' => 'approved', 'approved_by' => $approver->id]);
 
             $this->posting->entry(
@@ -210,6 +217,12 @@ class PayrollService
             }
 
             if ($added > 0) {
+                // New lines invalidate an existing review: the reviewer never
+                // saw them, so the run drops back to draft for a fresh pass.
+                if ($run->status === 'reviewed') {
+                    $run->update(['status' => 'draft', 'reviewed_by' => null, 'reviewed_at' => null]);
+                }
+
                 activity()->causedBy($user)->performedOn($run)
                     ->withProperties(['added' => $added])
                     ->log('payroll.synced');
@@ -335,21 +348,27 @@ class PayrollService
      */
     public function reopen(PayrollRun $run, User $user): PayrollRun
     {
-        if (! in_array($run->status, ['reviewed', 'approved'], true)) {
-            throw ValidationException::withMessages(['run' => __('payroll.bad_transition')]);
-        }
+        // Re-checked under the same row lock pay() holds, so a reopen click
+        // racing a payment can never flip a just-paid run back to draft.
+        return DB::transaction(function () use ($run, $user) {
+            $run = PayrollRun::whereKey($run->id)->lockForUpdate()->firstOrFail();
 
-        $run->update([
-            'status' => 'draft',
-            'reviewed_by' => null,
-            'reviewed_at' => null,
-            'approved_by' => null,
-            'approved_at' => null,
-        ]);
+            if (! in_array($run->status, ['reviewed', 'approved'], true)) {
+                throw ValidationException::withMessages(['run' => __('payroll.bad_transition')]);
+            }
 
-        activity()->causedBy($user)->performedOn($run)->log('payroll.reopened');
+            $run->update([
+                'status' => 'draft',
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+                'approved_by' => null,
+                'approved_at' => null,
+            ]);
 
-        return $run;
+            activity()->causedBy($user)->performedOn($run)->log('payroll.reopened');
+
+            return $run;
+        });
     }
 
     /**
@@ -357,11 +376,14 @@ class PayrollService
      */
     public function deleteRun(PayrollRun $run, User $user): void
     {
-        if ($run->status === 'paid') {
-            throw ValidationException::withMessages(['run' => __('payroll.locked')]);
-        }
-
         DB::transaction(function () use ($run, $user) {
+            // Locked re-read: deleting must never race a payment in flight.
+            $run = PayrollRun::whereKey($run->id)->lockForUpdate()->firstOrFail();
+
+            if ($run->status === 'paid') {
+                throw ValidationException::withMessages(['run' => __('payroll.locked')]);
+            }
+
             activity()->causedBy($user)->performedOn($run)->log('payroll.deleted');
             $run->lines()->delete();
             $run->delete();
@@ -390,7 +412,30 @@ class PayrollService
 
             foreach ($run->lines()->with('employee')->get() as $line) {
                 $method = $methods[$line->id] ?? $line->payment_method ?? 'bank';
-                $line->update(['payment_method' => $method, 'paid_at' => now()]);
+
+                // Clamp to live dues: a stale prefill (a second open run, or a
+                // hand-typed figure above the real debt) must never recover
+                // more than the employee still owes at the moment of payment.
+                $advMax = Money::sum($line->employee->advances()->where('status', 'active')->get()->map->remaining());
+                $chgMax = Money::sum($line->employee->charges()->where('status', 'approved')->get()->map->remaining());
+
+                $clamped = false;
+                if (Money::compare((string) $line->advance_recovery, $advMax) > 0) {
+                    $line->advance_recovery = $advMax;
+                    $clamped = true;
+                }
+                if (Money::compare((string) $line->charges_recovery, $chgMax) > 0) {
+                    $line->charges_recovery = $chgMax;
+                    $clamped = true;
+                }
+                if ($clamped) {
+                    $this->recalculate($line);
+                }
+
+                $line->payment_method = $method;
+                $line->paid_at = now();
+                $line->save();
+
                 $totals[$method === 'cash' ? 'cash' : 'bank'] = Money::add($totals[$method === 'cash' ? 'cash' : 'bank'], (string) $line->net);
 
                 // Recoveries come off the employee's account, oldest first.
@@ -402,7 +447,7 @@ class PayrollService
                     continue;
                 }
 
-                Expense::create([
+                $expense = Expense::create([
                     'expense_date' => now()->toDateString(),
                     'expense_category_id' => $salaryCategory->id,
                     'amount' => $total,
@@ -412,15 +457,19 @@ class PayrollService
                     'created_by' => $user->id,
                     'approved_by' => $user->id,
                     'approved_at' => now(),
-                ])->ledgerEntries()->create([
-                    'account_type' => $method === 'cash' ? LedgerEntry::CASH_BOX : LedgerEntry::BANK,
-                    'account_id' => $method === 'cash' ? LedgerEntry::MAIN_CASH_BOX_ID : LedgerEntry::MAIN_BANK_ID,
-                    'entry_date' => now()->toDateString(),
-                    'debit' => '0.00',
-                    'credit' => $total,
-                    'description' => __('payroll.expense_note', ['period' => $run->period]),
-                    'created_by' => $user->id,
                 ]);
+
+                // Through the single posting gate, like every other ledger write.
+                $this->posting->entry(
+                    $method === 'cash' ? LedgerEntry::CASH_BOX : LedgerEntry::BANK,
+                    $method === 'cash' ? LedgerEntry::MAIN_CASH_BOX_ID : LedgerEntry::MAIN_BANK_ID,
+                    now()->toDateString(),
+                    debit: '0.00',
+                    credit: $total,
+                    source: $expense,
+                    description: __('payroll.expense_note', ['period' => $run->period]),
+                    userId: $user->id,
+                );
             }
 
             $run->update(['status' => 'paid', 'paid_at' => now()]);
@@ -435,18 +484,41 @@ class PayrollService
     {
         $employee = $line->employee;
 
-        // Advances, oldest first.
+        // Advances, oldest first — two passes: each advance's monthly
+        // installment is honored before any surplus (early payoff) is
+        // applied, so an old installment plan can't swallow a newer
+        // advance's recovery and wreck both schedules.
         $remaining = (string) $line->advance_recovery;
-        foreach ($employee->advances()->where('status', 'active')->orderBy('advance_date')->orderBy('id')->get() as $advance) {
+        $advances = $employee->advances()->where('status', 'active')->orderBy('advance_date')->orderBy('id')->get();
+
+        foreach ($advances as $advance) {
             if (Money::compare($remaining, '0.00') <= 0) {
                 break;
             }
-            $take = Money::compare($advance->remaining(), $remaining) <= 0 ? $advance->remaining() : $remaining;
-            $advance->recovered_total = Money::add((string) $advance->recovered_total, $take);
-            if (Money::compare($advance->remaining(), '0.00') <= 0) {
-                $advance->status = 'settled';
+            $cap = $advance->dueThisMonth();
+            if (Money::compare($cap, $advance->remaining()) > 0) {
+                $cap = $advance->remaining();
             }
-            $advance->save();
+            $take = Money::compare($cap, $remaining) <= 0 ? $cap : $remaining;
+            if (Money::compare($take, '0.00') <= 0) {
+                continue;
+            }
+            $this->takeFromAdvance($advance, $take);
+            $remaining = Money::subtract($remaining, $take);
+        }
+
+        foreach ($advances as $advance) {
+            if (Money::compare($remaining, '0.00') <= 0) {
+                break;
+            }
+            if ($advance->status === 'settled') {
+                continue;
+            }
+            $take = Money::compare($advance->remaining(), $remaining) <= 0 ? $advance->remaining() : $remaining;
+            if (Money::compare($take, '0.00') <= 0) {
+                continue;
+            }
+            $this->takeFromAdvance($advance, $take);
             $remaining = Money::subtract($remaining, $take);
         }
 
@@ -475,5 +547,14 @@ class PayrollService
                 userId: $user->id,
             );
         }
+    }
+
+    private function takeFromAdvance(Advance $advance, string $take): void
+    {
+        $advance->recovered_total = Money::add((string) $advance->recovered_total, $take);
+        if (Money::compare($advance->remaining(), '0.00') <= 0) {
+            $advance->status = 'settled';
+        }
+        $advance->save();
     }
 }

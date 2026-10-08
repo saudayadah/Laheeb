@@ -96,7 +96,7 @@ export default function UsersIndex({ users, roles, currentUserId }: UsersPagePro
                 )}
 
                 <UserDialog
-                    key={editing?.id ?? 'new'}
+                    key={`${editing?.id ?? 'new'}-${open}`}
                     open={open}
                     onOpenChange={setOpen}
                     user={editing}

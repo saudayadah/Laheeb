@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount, fmtInt } from '@/lib/format';
+import { fmtAmount, fmtInt, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowDownToLine, ArrowUpFromLine, LoaderCircle, Package, Pencil, Plus } from 'lucide-react';
@@ -269,7 +269,7 @@ function MovementDialog({
     const { t } = useTrans();
     const { data, setData, post, processing, errors, reset } = useForm({
         raw_material_id: '' as number | '',
-        movement_date: new Date().toISOString().slice(0, 10),
+        movement_date: localToday(),
         direction,
         qty: '',
         notes: '',

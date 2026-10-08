@@ -9,7 +9,9 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Services\PostingService;
 use App\Support\Money;
+use DateTime;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class OpeningBalancesImporter extends BaseImporter
 {
@@ -44,6 +46,7 @@ class OpeningBalancesImporter extends BaseImporter
 
     public function validateRows(Collection $rows, User $user): array
     {
+        $seenAccounts = [];
         $result = [];
 
         foreach ($rows as $index => $row) {
@@ -55,11 +58,13 @@ class OpeningBalancesImporter extends BaseImporter
 
             $errors = [];
 
+            $rawDate = $this->str($row['date'] ?? null);
+
             $data = [
                 'type' => $this->str($row['type'] ?? null),
                 'code_or_name' => $this->str($row['code_or_name'] ?? null),
                 'amount' => $this->num($row['amount'] ?? null),
-                'date' => $this->str($row['date'] ?? null),
+                'date' => $rawDate !== null ? $this->normalizeDate($rawDate) : null,
                 'notes' => $this->str($row['notes'] ?? null),
             ];
 
@@ -69,12 +74,22 @@ class OpeningBalancesImporter extends BaseImporter
                 $errors[] = __('validation.in', ['attribute' => __('validation.attributes.type')]);
             }
 
-            if ($data['amount'] === null || Money::isZero($data['amount'])) {
+            // Amounts that round to zero at 2 decimals would post an empty entry.
+            if ($data['amount'] === null || Money::isZero(Money::add($data['amount'], '0.00'))) {
                 $errors[] = __('validation.required', ['attribute' => __('validation.attributes.price')]);
             }
 
-            if ($data['date'] !== null && strtotime($data['date']) === false) {
+            if ($rawDate !== null && $data['date'] === null) {
                 $errors[] = __('validation.date', ['attribute' => __('validation.attributes.effective_from')]);
+            }
+
+            if ($data['code_or_name'] !== null && mb_strlen($data['code_or_name']) > 150) {
+                $errors[] = __('validation.max.string', ['attribute' => __('validation.attributes.name'), 'max' => 150]);
+            }
+
+            // The marker prefix shares the 255-char description column with the notes.
+            if ($data['notes'] !== null && mb_strlen($data['notes']) > 242) {
+                $errors[] = __('validation.max.string', ['attribute' => __('validation.attributes.notes'), 'max' => 242]);
             }
 
             [$accountType, $accountId, $resolveError] = $type !== null && $data['code_or_name'] !== null
@@ -87,12 +102,41 @@ class OpeningBalancesImporter extends BaseImporter
                 $errors[] = $resolveError;
             } elseif ($accountId !== null && $this->alreadyImported($accountType, $accountId)) {
                 $errors[] = __('imports.opening_exists');
+            } elseif ($accountType !== null) {
+                // Two rows in the same file must not hit the same account.
+                $accountKey = $accountType.':'.($accountId ?? mb_strtolower($data['code_or_name']));
+
+                if (isset($seenAccounts[$accountKey])) {
+                    $errors[] = __('imports.opening_exists');
+                }
+
+                $seenAccounts[$accountKey] = true;
             }
 
             $result[] = ['row' => $index + 1, 'data' => $data, 'errors' => $errors];
         }
 
         return $result;
+    }
+
+    /** Normalize an Excel serial, Y-m-d or d/m/Y value to Y-m-d, or null when invalid. */
+    private function normalizeDate(string $raw): ?string
+    {
+        // Excel stores dates as day serials; 25569 = 1970-01-01.
+        if (preg_match('/^\d{4,5}(\.0+)?$/', $raw) && (float) $raw > 25569) {
+            return Date::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+        }
+
+        foreach (['Y-m-d', 'd/m/Y'] as $format) {
+            $date = DateTime::createFromFormat('!'.$format, $raw);
+            $issues = DateTime::getLastErrors();
+
+            if ($date !== false && ($issues === false || ($issues['warning_count'] === 0 && $issues['error_count'] === 0))) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return null;
     }
 
     public function commit(array $validRows, User $user): int
@@ -103,10 +147,19 @@ class OpeningBalancesImporter extends BaseImporter
         foreach ($validRows as $rowData) {
             $data = $rowData['data'];
             $type = self::TYPES[mb_strtolower($data['type'])];
+            $amount = Money::add($data['amount'], '0.00');
+
+            if (Money::isZero($amount)) {
+                continue; // rounds to zero at 2 decimals — nothing to post
+            }
 
             // Suppliers may be created on the fly, like customer groups.
             if ($type === 'supplier') {
-                Supplier::firstOrCreate(['name' => $data['code_or_name']]);
+                $supplier = Supplier::withTrashed()->firstOrCreate(['name' => $data['code_or_name']]);
+
+                if ($supplier->trashed()) {
+                    $supplier->restore();
+                }
             }
 
             [$accountType, $accountId] = $this->resolve($type, $data['code_or_name']);
@@ -115,7 +168,6 @@ class OpeningBalancesImporter extends BaseImporter
                 continue; // re-validated defensively inside the transaction
             }
 
-            $amount = Money::add($data['amount'], '0.00');
             $isDebit = Money::compare($amount, '0.00') > 0;
             $abs = $isDebit ? $amount : Money::subtract('0.00', $amount);
 

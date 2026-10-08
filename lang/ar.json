@@ -146,6 +146,7 @@
     "customers.credit_limit": "حد الائتمان",
     "customers.credit_days": "أيام الائتمان",
     "customers.route": "خط السير",
+    "customers.has_balance": "لا يمكن حذف عميل عليه رصيد — صفِّ حسابه أولًا",
     "customers.no_route": "بدون خط",
     "customers.stop_sequence": "ترتيب التوقف",
     "customers.city": "المدينة",
@@ -371,6 +372,7 @@
     "invoices.to": "إلى",
     "invoices.vat_included_note": "الأسعار شاملة ضريبة القيمة المضافة",
     "invoices.reason": "السبب",
+    "invoices.reclass_has_payments": "الفاتورة عليها سندات قبض أو مرتجعات مرحّلة — ألغِها أولًا ثم أعد التصنيف",
 
     "credit.over_limit": "العميل تجاوز حد الائتمان — البيع الآجل موقوف",
     "credit.overdue": "على العميل فواتير متأخرة عن المدة المسموحة — البيع الآجل موقوف",
@@ -517,6 +519,7 @@
     "advances.charge_pending": "سُجّل الالتزام — بانتظار الاعتماد",
     "advances.charge_approved": "اعتُمد الالتزام على حساب الموظف",
     "advances.shortage_note": "عجز العهدة يحتاج موافقة المدير وينتقل من عهدة السائق لحساب الموظف",
+    "advances.shortage_needs_driver": "خصم العجز يتطلب موظفًا مرتبطًا بحساب دخول (سائق)",
 
     "payroll.title": "الرواتب",
     "payroll.create": "مسيّر شهر جديد",

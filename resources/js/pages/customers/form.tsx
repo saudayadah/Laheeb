@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtPrice } from '@/lib/format';
+import { fmtPrice, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { type CustomerFormData, type IdName, type PriceRow } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
@@ -319,7 +319,7 @@ function PricesPanel({
     const { t } = useTrans();
     const [productId, setProductId] = useState('');
     const [price, setPrice] = useState('');
-    const [effectiveFrom, setEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10));
+    const [effectiveFrom, setEffectiveFrom] = useState(() => localToday());
     const [saving, setSaving] = useState(false);
 
     const addPrice = () => {

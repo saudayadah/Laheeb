@@ -1,4 +1,5 @@
 import { Field, NativeSelect } from '@/components/field';
+import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { fmtAmount, fmtPrice } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Ban, LoaderCircle, Printer, ReceiptText, Repeat, Undo2 } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 interface InvoiceLineData {
     id: number;
@@ -201,7 +202,13 @@ export default function InvoiceShow({ invoice, canVoid, canReclassify }: ShowPro
                 )}
 
                 <VoidDialog open={voidOpen} onOpenChange={setVoidOpen} invoiceId={invoice.id} />
-                <ReclassifyDialog open={reclassOpen} onOpenChange={setReclassOpen} invoiceId={invoice.id} current={invoice.payment_method} />
+                <ReclassifyDialog
+                    key={`${invoice.payment_method}-${reclassOpen}`}
+                    open={reclassOpen}
+                    onOpenChange={setReclassOpen}
+                    invoiceId={invoice.id}
+                    current={invoice.payment_method}
+                />
                 <ReturnDialog open={returnOpen} onOpenChange={setReturnOpen} invoice={invoice} />
             </div>
         </AppLayout>
@@ -227,6 +234,7 @@ function VoidDialog({ open, onOpenChange, invoiceId }: { open: boolean; onOpenCh
                     <Field label={t('invoices.void_reason')} htmlFor="void_reason" error={errors.reason}>
                         <Input id="void_reason" value={data.reason} onChange={(e) => setData('reason', e.target.value)} required />
                     </Field>
+                    <InputError message={(errors as Record<string, string>).invoice} />
                     <DialogFooter className="gap-2">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             {t('common.cancel')}
@@ -285,6 +293,7 @@ function ReclassifyDialog({
                     <Field label={t('invoices.reclass_reason')} htmlFor="reclass_reason" error={errors.reason}>
                         <Input id="reclass_reason" value={data.reason} onChange={(e) => setData('reason', e.target.value)} required />
                     </Field>
+                    <InputError message={(errors as Record<string, string>).invoice} />
                     <DialogFooter className="gap-2">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             {t('common.cancel')}
@@ -306,6 +315,11 @@ function ReturnDialog({ open, onOpenChange, invoice }: { open: boolean; onOpenCh
     const [condition, setCondition] = useState('good');
     const [reason, setReason] = useState('');
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // One key per dialog opening: a retry after a network hiccup reuses it,
+    // so the server can never post the same return twice.
+    const idempotencyKey = useMemo(() => crypto.randomUUID(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const productLines = invoice.lines.filter((line) => line.product_id !== null);
 
@@ -316,9 +330,10 @@ function ReturnDialog({ open, onOpenChange, invoice }: { open: boolean; onOpenCh
         if (items.length === 0) return;
 
         setSaving(true);
+        setError(null);
         router.post(
             route('invoices.credit-note', invoice.id),
-            { items, reason: reason || t('invoices.return_reason') },
+            { items, reason: reason || t('invoices.return_reason'), idempotency_key: idempotencyKey },
             {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -326,6 +341,7 @@ function ReturnDialog({ open, onOpenChange, invoice }: { open: boolean; onOpenCh
                     setQtys({});
                     setReason('');
                 },
+                onError: (e) => setError(Object.values(e)[0] as string),
                 onFinish: () => setSaving(false),
             },
         );
@@ -364,6 +380,11 @@ function ReturnDialog({ open, onOpenChange, invoice }: { open: boolean; onOpenCh
                             <Input id="ret_reason" value={reason} onChange={(e) => setReason(e.target.value)} />
                         </Field>
                     </div>
+                    {error && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                            {error}
+                        </div>
+                    )}
                 </div>
                 <DialogFooter className="gap-2">
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -138,10 +138,13 @@ class InvoiceService
     public function confirmDay(Carbon $date, User $user): int
     {
         return DB::transaction(function () use ($date, $user) {
+            // Row locks serialize two overlapping confirm clicks: the second
+            // transaction re-reads and finds zero draft orders left.
             $orders = Order::whereDate('order_date', $date)
                 ->where('status', Order::STATUS_DRAFT)
                 ->whereHas('lines')
                 ->with(['lines', 'customer.route'])
+                ->lockForUpdate()
                 ->get();
 
             $count = 0;
@@ -161,22 +164,28 @@ class InvoiceService
     /** Replace the lines of a draft invoice (driver adjusting delivered quantities). */
     public function updateDraftLines(Invoice $invoice, array $items): Invoice
     {
-        if (! $invoice->isDraft()) {
-            throw ValidationException::withMessages(['invoice' => __('invoices.immutable')]);
-        }
+        return DB::transaction(function () use ($invoice, $items) {
+            // Locked re-read: lines and header must change together, and a
+            // concurrent post() must not slip between the check and the write.
+            $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
 
-        $built = $this->buildLines($invoice->customer, $items, Carbon::parse($invoice->invoice_date));
+            if (! $invoice->isDraft()) {
+                throw ValidationException::withMessages(['invoice' => __('invoices.immutable')]);
+            }
 
-        $invoice->lines()->delete();
-        $invoice->lines()->createMany($built['lines']);
-        $invoice->update([
-            'subtotal' => $built['subtotal'],
-            'vat_amount' => $built['vat'],
-            'total' => $built['total'],
-            'prices_include_vat' => $built['prices_include_vat'],
-        ]);
+            $built = $this->buildLines($invoice->customer, $items, Carbon::parse($invoice->invoice_date));
 
-        return $invoice->refresh();
+            $invoice->lines()->delete();
+            $invoice->lines()->createMany($built['lines']);
+            $invoice->update([
+                'subtotal' => $built['subtotal'],
+                'vat_amount' => $built['vat'],
+                'total' => $built['total'],
+                'prices_include_vat' => $built['prices_include_vat'],
+            ]);
+
+            return $invoice->refresh();
+        });
     }
 
     /** Post a draft invoice: gapless number, hash chain, QR, ledger. Idempotent. */
@@ -213,6 +222,17 @@ class InvoiceService
                 if ($locked) {
                     throw ValidationException::withMessages(['invoice' => __('closes.day_locked')]);
                 }
+            } elseif ($invoice->payment_method === 'cash') {
+                // Counter cash: an approved counter close locks the box for that day.
+                $locked = DailyClose::where('closeable_type', DailyClose::TYPE_COUNTER)
+                    ->where('closeable_id', 0)
+                    ->whereDate('close_date', $invoice->invoice_date)
+                    ->where('status', 'approved')
+                    ->exists();
+
+                if ($locked) {
+                    throw ValidationException::withMessages(['invoice' => __('closes.day_locked')]);
+                }
             }
 
             if ($invoice->payment_method === 'credit' && $invoice->customer !== null) {
@@ -232,10 +252,14 @@ class InvoiceService
             }
 
             $number = DocumentSequence::allocate($invoice->series);
+
+            // The chain covers every NUMBERED invoice (void keeps its link),
+            // and the locking read always sees the latest committed tip even
+            // under REPEATABLE READ with an older snapshot.
             $prevHash = Invoice::where('series', $invoice->series)
-                ->where('status', Invoice::STATUS_POSTED)
                 ->whereNotNull('hash')
                 ->orderByDesc('number')
+                ->lockForUpdate()
                 ->value('hash');
 
             $hash = hash('sha256', implode('|', [
@@ -328,6 +352,8 @@ class InvoiceService
                 throw ValidationException::withMessages(['invoice' => __('invoices.not_posted')]);
             }
 
+            $this->assertDriverDayOpen($invoice);
+
             $invoice->forceFill([
                 'status' => Invoice::STATUS_VOID,
                 'voided_at' => now(),
@@ -355,6 +381,25 @@ class InvoiceService
 
             if ($invoice->payment_method === $newMethod) {
                 return $invoice;
+            }
+
+            $this->assertDriverDayOpen($invoice);
+
+            // Attached money must move first: posted receipts or credit notes
+            // keep legs on the OLD account, so reclassifying under them would
+            // double-count. Void those documents, then reclassify.
+            $hasAllocations = DB::table('receipt_allocations')
+                ->join('receipts', 'receipts.id', '=', 'receipt_allocations.receipt_id')
+                ->where('receipts.status', 'posted')
+                ->where('receipt_allocations.invoice_id', $invoice->id)
+                ->exists();
+
+            $hasCredits = CreditNote::where('invoice_id', $invoice->id)
+                ->where('status', 'posted')
+                ->exists();
+
+            if ($hasAllocations || $hasCredits) {
+                throw ValidationException::withMessages(['invoice' => __('invoices.reclass_has_payments')]);
             }
 
             $old = $invoice->payment_method;
@@ -400,6 +445,13 @@ class InvoiceService
         }
 
         return DB::transaction(function () use ($invoice, $customer, $items, $reason, $user, $date, $idempotencyKey) {
+            // Locked re-read FIRST: serializes concurrent returns against the
+            // same invoice and refreshes the read view before the sum below.
+            if ($invoice !== null) {
+                $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+                $this->assertDriverDayOpen($invoice);
+            }
+
             $customer ??= $invoice?->customer;
             $date ??= today();
 
@@ -423,9 +475,13 @@ class InvoiceService
 
             // A return can never credit more than the invoice still carries.
             if ($invoice !== null) {
-                $alreadyCredited = (string) CreditNote::where('invoice_id', $invoice->id)
-                    ->where('status', 'posted')
-                    ->sum('total');
+                $alreadyCredited = Money::sum(
+                    CreditNote::where('invoice_id', $invoice->id)
+                        ->where('status', 'posted')
+                        ->lockForUpdate()
+                        ->pluck('total')
+                        ->map(fn ($total) => (string) $total),
+                );
 
                 $remaining = Money::subtract((string) $invoice->total, $alreadyCredited);
 
@@ -461,5 +517,26 @@ class InvoiceService
 
             return $note;
         });
+    }
+
+    /**
+     * After a driver's day is closed and approved, the cash has physically
+     * moved — no void/reclass/return may rewrite that custody retroactively.
+     */
+    private function assertDriverDayOpen(Invoice $invoice): void
+    {
+        if ($invoice->driver_id === null) {
+            return;
+        }
+
+        $locked = DailyClose::where('closeable_type', DailyClose::TYPE_DRIVER)
+            ->where('closeable_id', $invoice->driver_id)
+            ->whereDate('close_date', $invoice->invoice_date)
+            ->where('status', 'approved')
+            ->exists();
+
+        if ($locked) {
+            throw ValidationException::withMessages(['invoice' => __('closes.day_locked')]);
+        }
     }
 }

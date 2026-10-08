@@ -95,7 +95,7 @@ export default function GroupsIndex({ groups, canManage }: GroupsPageProps) {
                     </div>
                 )}
 
-                <GroupDialog key={editing?.id ?? 'new'} open={open} onOpenChange={setOpen} group={editing} />
+                <GroupDialog key={`${editing?.id ?? 'new'}-${open}`} open={open} onOpenChange={setOpen} group={editing} />
             </div>
         </AppLayout>
     );

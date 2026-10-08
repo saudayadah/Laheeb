@@ -41,6 +41,7 @@ class ProductsImporter extends BaseImporter
 
     public function validateRows(Collection $rows, User $user): array
     {
+        $seen = [];
         $result = [];
 
         foreach ($rows as $index => $row) {
@@ -74,6 +75,37 @@ class ProductsImporter extends BaseImporter
                 $errors[] = __('validation.required', ['attribute' => __('validation.attributes.default_price')]);
             }
 
+            // The same (category, name_ar) pair twice in one file would collide on commit.
+            if ($data['name_ar'] !== null && $data['category'] !== null) {
+                $key = mb_strtolower($this->canonicalCategory($data['category'])).'|'.$data['name_ar'];
+
+                if (isset($seen[$key])) {
+                    $errors[] = __('validation.unique', ['attribute' => __('validation.attributes.name_ar')]);
+                }
+
+                $seen[$key] = true;
+            }
+
+            foreach (['name_ar' => 100, 'name_en' => 100] as $field => $max) {
+                if ($data[$field] !== null && mb_strlen($data[$field]) > $max) {
+                    $errors[] = __('validation.max.string', ['attribute' => __("validation.attributes.{$field}"), 'max' => $max]);
+                }
+            }
+
+            if ($data['vat_rate'] !== null && ((float) $data['vat_rate'] < 0 || (float) $data['vat_rate'] > 100)) {
+                $errors[] = __('validation.between.numeric', ['attribute' => __('validation.attributes.vat_rate'), 'min' => 0, 'max' => 100]);
+            }
+
+            if ($data['default_price'] !== null && (float) $data['default_price'] < 0) {
+                $errors[] = __('validation.min.numeric', ['attribute' => __('validation.attributes.default_price'), 'min' => 0]);
+            }
+
+            foreach (['size_cm', 'sort_order'] as $field) {
+                if ($data[$field] !== null && (! ctype_digit($data[$field]) || (float) $data[$field] > 65535)) {
+                    $errors[] = __('validation.between.numeric', ['attribute' => __("validation.attributes.{$field}"), 'min' => 0, 'max' => 65535]);
+                }
+            }
+
             $result[] = [
                 'row' => $index + 1,
                 'data' => $data,
@@ -91,15 +123,24 @@ class ProductsImporter extends BaseImporter
         foreach ($validRows as $rowData) {
             $data = $rowData['data'];
 
-            Product::create([
-                'name_ar' => $data['name_ar'],
-                'name_en' => $data['name_en'],
-                'product_category_id' => $this->resolveCategory($data['category'])->id,
-                'size_cm' => $data['size_cm'] !== null ? (int) $data['size_cm'] : null,
-                'default_price' => $data['default_price'],
-                'vat_rate' => $data['vat_rate'],
-                'sort_order' => $data['sort_order'] !== null ? (int) $data['sort_order'] : 0,
-            ]);
+            $category = $this->resolveCategory($data['category']);
+
+            // Upsert on the (category, name_ar) unique key — re-uploading the same
+            // file updates rows instead of crashing, and revives soft-deleted ones.
+            $product = Product::withTrashed()->updateOrCreate(
+                ['product_category_id' => $category->id, 'name_ar' => $data['name_ar']],
+                [
+                    'name_en' => $data['name_en'],
+                    'size_cm' => $data['size_cm'] !== null ? (int) $data['size_cm'] : null,
+                    'default_price' => $data['default_price'],
+                    'vat_rate' => $data['vat_rate'],
+                    'sort_order' => $data['sort_order'] !== null ? (int) $data['sort_order'] : 0,
+                ],
+            );
+
+            if ($product->trashed()) {
+                $product->restore();
+            }
 
             $count++;
         }
@@ -107,9 +148,14 @@ class ProductsImporter extends BaseImporter
         return $count;
     }
 
+    private function canonicalCategory(string $name): string
+    {
+        return self::SYNONYMS[mb_strtolower(trim($name))] ?? trim($name);
+    }
+
     private function resolveCategory(string $name): ProductCategory
     {
-        $canonical = self::SYNONYMS[mb_strtolower(trim($name))] ?? trim($name);
+        $canonical = $this->canonicalCategory($name);
 
         $existing = ProductCategory::query()->where('name_ar', $canonical)->first()
             ?? ProductCategory::query()->whereRaw('LOWER(name_en) = ?', [mb_strtolower($canonical)])->first();

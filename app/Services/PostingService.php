@@ -57,15 +57,17 @@ class PostingService
 
         $invoice = $note->invoice;
 
+        // Mirrors cashDestination exactly: mada resolves BEFORE driver, so a
+        // return against a mada van sale credits the bank it was paid into.
         if (($invoice?->payment_method ?? 'credit') === 'credit' && $note->customer_id !== null) {
             $type = LedgerEntry::CUSTOMER;
             $id = $note->customer_id;
-        } elseif ($invoice?->driver_id !== null) {
-            $type = LedgerEntry::DRIVER;
-            $id = $invoice->driver_id;
         } elseif (($invoice?->payment_method ?? null) === 'mada') {
             $type = LedgerEntry::BANK;
             $id = LedgerEntry::MAIN_BANK_ID;
+        } elseif ($invoice?->driver_id !== null) {
+            $type = LedgerEntry::DRIVER;
+            $id = $invoice->driver_id;
         } else {
             $type = LedgerEntry::CASH_BOX;
             $id = LedgerEntry::MAIN_CASH_BOX_ID;

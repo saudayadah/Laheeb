@@ -112,11 +112,12 @@ class ReceiptController extends Controller
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'customer_group_id' => ['nullable', 'integer', 'exists:customer_groups,id', 'required_without:customer_id'],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:10000000'],
-            'receipt_date' => ['required', 'date'],
+            'receipt_date' => ['required', 'date', 'before_or_equal:today'],
             'method' => ['required', 'in:cash,mada,transfer'],
             'reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
             'allocations' => ['nullable', 'array'],
+            'allocations.*' => ['numeric', 'min:0.01', 'max:10000000'],
             'idempotency_key' => ['required', 'string', 'max:64'],
         ]);
 

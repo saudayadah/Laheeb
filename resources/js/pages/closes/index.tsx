@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount } from '@/lib/format';
+import { fmtAmount, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { type IdName, type Paginated } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -35,7 +35,7 @@ interface ClosesPageProps {
 export default function ClosesIndex({ closes, isApprover, drivers, selfId }: ClosesPageProps) {
     const { t } = useTrans();
     const [driverId, setDriverId] = useState('');
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localToday();
 
     return (
         <AppLayout breadcrumbs={[{ title: t('closes.title'), href: '/closes' }]}>

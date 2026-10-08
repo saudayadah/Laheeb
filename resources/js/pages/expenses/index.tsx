@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount, fmtInt } from '@/lib/format';
+import { fmtAmount, fmtInt, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { type IdName, type Paginated } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -50,6 +50,7 @@ export default function ExpensesIndex({ expenses, filters, summary, categories, 
     const [createOpen, setCreateOpen] = useState(false);
     const [voidId, setVoidId] = useState<number | null>(null);
     const [voidReason, setVoidReason] = useState('');
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const apply = (updates: Partial<ExpensesPageProps['filters']>) => {
         const next = { ...filters, ...updates };
@@ -62,6 +63,7 @@ export default function ExpensesIndex({ expenses, filters, summary, categories, 
 
     const submitVoid = () => {
         if (!voidId || !voidReason) return;
+        setActionError(null);
         router.post(
             route('expenses.void', voidId),
             { reason: voidReason },
@@ -71,6 +73,7 @@ export default function ExpensesIndex({ expenses, filters, summary, categories, 
                     setVoidId(null);
                     setVoidReason('');
                 },
+                onError: (e) => setActionError(Object.values(e)[0] as string),
             },
         );
     };
@@ -159,6 +162,12 @@ export default function ExpensesIndex({ expenses, filters, summary, categories, 
                     </NativeSelect>
                 </div>
 
+                {actionError && (
+                    <div className="rounded-lg border border-red-300 bg-red-100/60 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+                        {actionError}
+                    </div>
+                )}
+
                 {expenses.data.length === 0 ? (
                     <EmptyState icon={Wallet} message={t('common.no_results')} />
                 ) : (
@@ -222,9 +231,17 @@ export default function ExpensesIndex({ expenses, filters, summary, categories, 
                                                         variant="ghost"
                                                         size="icon"
                                                         className="size-8 text-emerald-600"
-                                                        onClick={() =>
-                                                            router.post(route('expenses.approve', expense.id), {}, { preserveScroll: true })
-                                                        }
+                                                        onClick={() => {
+                                                            setActionError(null);
+                                                            router.post(
+                                                                route('expenses.approve', expense.id),
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onError: (e) => setActionError(Object.values(e)[0] as string),
+                                                                },
+                                                            );
+                                                        }}
                                                     >
                                                         <Check className="size-4" />
                                                     </Button>
@@ -300,7 +317,7 @@ export function ExpenseDialog({
     presetCategory?: number;
 }) {
     const { t } = useTrans();
-    const [date, setDate] = useState(presetDate ?? new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState(presetDate ?? localToday());
     const [categoryId, setCategoryId] = useState(presetCategory ? String(presetCategory) : '');
     const [amount, setAmount] = useState('');
     const [paidFrom, setPaidFrom] = useState('counter_cash');

@@ -128,14 +128,18 @@ function MonthlySection({ year, monthly, monthlyPrev }: ReportsPageProps) {
 
     const totals = useMemo(() => {
         const sum = (rows: MonthRow[], key: keyof MonthRow) => rows.reduce((acc, row) => acc + parseFloat(String(row[key])), 0);
+        // Like-for-like YoY: a partial current year compares against the SAME
+        // months of last year, not all twelve.
+        const elapsed = year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12;
+
         return {
             total: sum(monthly, 'total'),
-            prevTotal: sum(monthlyPrev, 'total'),
+            prevTotal: sum(monthlyPrev.slice(0, elapsed), 'total'),
             expenses: sum(monthly, 'expenses_total'),
             net: sum(monthly, 'net'),
             netCash: sum(monthly, 'net_cash'),
         };
-    }, [monthly, monthlyPrev]);
+    }, [monthly, monthlyPrev, year]);
 
     const expensePct = totals.total > 0 ? Math.round((totals.expenses / totals.total) * 100) : 0;
     const monthName = (m: number) =>

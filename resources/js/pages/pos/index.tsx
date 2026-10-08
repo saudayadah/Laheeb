@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { fmtAmount, fmtInt, fmtPrice } from '@/lib/format';
+import { fmtAmount, fmtInt, fmtPrice, localToday } from '@/lib/format';
 import { useTrans } from '@/lib/i18n';
 import { Head, router } from '@inertiajs/react';
 import { Banknote, CreditCard, LoaderCircle, Minus, Plus, Trash2 } from 'lucide-react';
@@ -172,17 +172,21 @@ function DailyRetailCard() {
     const { t } = useTrans();
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('cash');
-    const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState(() => localToday());
     const [saving, setSaving] = useState(false);
+    const idempotencyKey = useRef(crypto.randomUUID());
 
     const submit = () => {
         if (!amount) return;
         setSaving(true);
         router.post(
             route('pos.daily-retail'),
-            { amount, payment_method: method, date, idempotency_key: crypto.randomUUID() },
+            { amount, payment_method: method, date, idempotency_key: idempotencyKey.current },
             {
-                onSuccess: () => setAmount(''),
+                onSuccess: () => {
+                    setAmount('');
+                    idempotencyKey.current = crypto.randomUUID();
+                },
                 onFinish: () => setSaving(false),
             },
         );

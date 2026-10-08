@@ -119,9 +119,11 @@ function DriverExpenseButton({ categories }: { categories: { id: number; name_ar
     const [note, setNote] = useState('');
     const [photo, setPhoto] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const submit = () => {
         setSaving(true);
+        setError(null);
         router.post(
             route('delivery.expense'),
             { expense_category_id: categoryId, amount, note: note || null, photo },
@@ -133,6 +135,7 @@ function DriverExpenseButton({ categories }: { categories: { id: number; name_ar
                     setNote('');
                     setPhoto(null);
                 },
+                onError: (errors) => setError(Object.values(errors)[0] as string),
                 onFinish: () => setSaving(false),
             },
         );
@@ -185,6 +188,11 @@ function DriverExpenseButton({ categories }: { categories: { id: number; name_ar
                                 onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
                             />
                         </Field>
+                        {error && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                                {error}
+                            </div>
+                        )}
                     </div>
                     <DialogFooter className="gap-2">
                         <Button variant="outline" onClick={() => setOpen(false)}>

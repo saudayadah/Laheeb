@@ -88,8 +88,11 @@ class ReceiptService
         }
 
         return DB::transaction(function () use ($attrs, $manualAllocations, $user, $idempotencyKey) {
-            $customer = ! empty($attrs['customer_id']) ? Customer::findOrFail($attrs['customer_id']) : null;
-            $group = ! empty($attrs['customer_group_id']) ? CustomerGroup::findOrFail($attrs['customer_group_id']) : null;
+            // Locking reads FIRST: they serialize two cashiers collecting for
+            // the same payer and refresh the read view, so openInvoices()
+            // below always sees allocations committed a moment ago.
+            $customer = ! empty($attrs['customer_id']) ? Customer::whereKey($attrs['customer_id'])->lockForUpdate()->firstOrFail() : null;
+            $group = ! empty($attrs['customer_group_id']) ? CustomerGroup::whereKey($attrs['customer_group_id'])->lockForUpdate()->firstOrFail() : null;
 
             if ($customer === null && $group === null) {
                 throw ValidationException::withMessages(['customer_id' => __('receipts.customer_required')]);
@@ -219,6 +222,10 @@ class ReceiptService
                 return $receipt;
             }
 
+            // Once that day's cash was counted and handed over, the receipt
+            // cannot be unwound — the physical money already moved.
+            $this->assertDayOpen($receipt->received_by, (string) $receipt->receipt_date, $receipt->method);
+
             foreach ($receipt->ledgerEntries()->get() as $entry) {
                 $this->posting->entry(
                     $entry->account_type, (int) $entry->account_id, today(),
@@ -256,12 +263,29 @@ class ReceiptService
 
     private function assertDayOpen(?int $receivedBy, string $date, string $method): void
     {
-        if ($receivedBy === null || $method !== 'cash') {
+        if ($method !== 'cash') {
             return;
         }
 
-        $locked = DailyClose::where('closeable_type', DailyClose::TYPE_DRIVER)
-            ->where('closeable_id', $receivedBy)
+        $receiver = $receivedBy !== null ? User::find($receivedBy) : null;
+
+        if ($receiver !== null && $receiver->hasRole('driver')) {
+            $locked = DailyClose::where('closeable_type', DailyClose::TYPE_DRIVER)
+                ->where('closeable_id', $receivedBy)
+                ->whereDate('close_date', $date)
+                ->where('status', 'approved')
+                ->exists();
+
+            if ($locked) {
+                throw ValidationException::withMessages(['receipt' => __('closes.day_locked')]);
+            }
+
+            return;
+        }
+
+        // Office cash lands in the box: an approved counter close locks it too.
+        $locked = DailyClose::where('closeable_type', DailyClose::TYPE_COUNTER)
+            ->where('closeable_id', 0)
             ->whereDate('close_date', $date)
             ->where('status', 'approved')
             ->exists();

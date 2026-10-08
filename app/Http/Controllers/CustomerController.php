@@ -6,8 +6,10 @@ use App\Http\Requests\CustomerRequest;
 use App\Models\Customer;
 use App\Models\CustomerGroup;
 use App\Models\DeliveryRoute;
+use App\Models\LedgerEntry;
 use App\Models\Price;
 use App\Models\Product;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -174,6 +176,14 @@ class CustomerController extends Controller
     public function destroy(Customer $customer): RedirectResponse
     {
         $this->authorize('delete', $customer);
+
+        // A customer who still owes (or is owed) money stays visible:
+        // deleting them would desync the receivables screens from the ledger.
+        $balance = LedgerEntry::balance(LedgerEntry::CUSTOMER, $customer->id);
+
+        if (! Money::isZero($balance)) {
+            return back()->with('error', __('customers.has_balance'));
+        }
 
         $customer->delete();
 
