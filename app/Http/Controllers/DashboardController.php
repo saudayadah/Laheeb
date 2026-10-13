@@ -101,10 +101,87 @@ class DashboardController extends Controller
                 'orders_today' => Order::whereDate('order_date', today())->whereHas('lines')->count(),
                 'invoices_today' => Invoice::whereDate('invoice_date', today())->where('status', Invoice::STATUS_POSTED)->count(),
             ],
+            'analysis' => $user->can('reports.view') ? $this->analysis() : null,
             'attention' => $user->can('reports.view')
                 ? $this->attention($user, $customerBalances ?? collect())
                 : null,
         ]);
+    }
+
+    /**
+     * The owner's plain-language month summary: sales so far versus the same
+     * days of last month, what came in, what went out, and who/what sold most.
+     *
+     * @return array<string, mixed>
+     */
+    private function analysis(): array
+    {
+        $monthStart = today()->startOfMonth();
+        $prevStart = $monthStart->copy()->subMonth();
+        $prevEnd = $prevStart->copy()->addDays(today()->day - 1);
+
+        $netSales = function ($from, $to = null): float {
+            $sales = Invoice::where('status', Invoice::STATUS_POSTED)
+                ->whereDate('invoice_date', '>=', $from)
+                ->when($to, fn ($q) => $q->whereDate('invoice_date', '<=', $to))
+                ->sum('total');
+
+            $credited = CreditNote::where('status', 'posted')
+                ->whereDate('note_date', '>=', $from)
+                ->when($to, fn ($q) => $q->whereDate('note_date', '<=', $to))
+                ->sum('total');
+
+            return (float) $sales - (float) $credited;
+        };
+
+        $monthSales = $netSales($monthStart);
+        $prevSales = $netSales($prevStart, $prevEnd);
+
+        $monthCollections = (float) Receipt::where('status', 'posted')
+            ->whereDate('receipt_date', '>=', $monthStart)
+            ->sum('amount');
+
+        $monthExpenses = (float) Expense::where('status', 'approved')
+            ->whereDate('expense_date', '>=', $monthStart)
+            ->sum('amount');
+
+        $topProducts = DB::table('invoice_lines')
+            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->join('products', 'products.id', '=', 'invoice_lines.product_id')
+            ->where('invoices.status', Invoice::STATUS_POSTED)
+            ->whereDate('invoices.invoice_date', '>=', $monthStart)
+            ->groupBy('invoice_lines.product_id', 'products.name_ar')
+            ->selectRaw('products.name_ar as name, COALESCE(SUM(invoice_lines.qty), 0) as qty, COALESCE(SUM(invoice_lines.line_total), 0) as amount')
+            ->orderByDesc('amount')
+            ->limit(3)
+            ->get();
+
+        $topCustomers = Invoice::query()
+            ->join('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->where('invoices.status', Invoice::STATUS_POSTED)
+            ->whereDate('invoices.invoice_date', '>=', $monthStart)
+            ->groupBy('invoices.customer_id', 'customers.name')
+            ->selectRaw('customers.name as name, COALESCE(SUM(invoices.total), 0) as amount')
+            ->orderByDesc('amount')
+            ->limit(3)
+            ->get();
+
+        return [
+            'month_sales' => number_format($monthSales, 2, '.', ''),
+            'delta_pct' => $prevSales > 0.004 ? (int) round(($monthSales - $prevSales) / $prevSales * 100) : null,
+            'month_collections' => number_format($monthCollections, 2, '.', ''),
+            'month_expenses' => number_format($monthExpenses, 2, '.', ''),
+            'month_net' => number_format($monthSales - $monthExpenses, 2, '.', ''),
+            'top_products' => $topProducts->map(fn ($row) => [
+                'name' => $row->name,
+                'qty' => (int) $row->qty,
+                'amount' => number_format((float) $row->amount, 2, '.', ''),
+            ])->values(),
+            'top_customers' => $topCustomers->map(fn ($row) => [
+                'name' => $row->name,
+                'amount' => number_format((float) $row->amount, 2, '.', ''),
+            ])->values(),
+        ];
     }
 
     /**

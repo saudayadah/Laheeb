@@ -15,7 +15,7 @@ import { useTrans } from '@/lib/i18n';
 import { type ProductCategoryItem, type ProductItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { Check, LoaderCircle, Pencil, Plus, Tags, Wheat } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, Fragment, useMemo, useState } from 'react';
 
 interface ProductsPageProps {
     products: ProductItem[];
@@ -36,6 +36,21 @@ export default function ProductsIndex({ products, categories, canManage }: Produ
         if (!cat) return '—';
         return locale === 'ar' ? cat.name_ar : (cat.name_en ?? cat.name_ar);
     };
+
+    // Products arrive sorted by category then product sort order; keep that
+    // order and fold them into one section per category.
+    const grouped = useMemo(() => {
+        const map = new Map<number | null, ProductItem[]>();
+        for (const product of products) {
+            const list = map.get(product.product_category_id);
+            if (list) {
+                list.push(product);
+            } else {
+                map.set(product.product_category_id, [product]);
+            }
+        }
+        return [...map.entries()];
+    }, [products]);
 
     return (
         <AppLayout breadcrumbs={[{ title: t('products.title'), href: '/products' }]}>
@@ -72,7 +87,6 @@ export default function ProductsIndex({ products, categories, canManage }: Produ
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>{t('products.name_ar')}</TableHead>
-                                    <TableHead>{t('products.category')}</TableHead>
                                     <TableHead className="text-end">{t('products.size_cm')}</TableHead>
                                     <TableHead className="text-end">{t('products.default_price')}</TableHead>
                                     <TableHead className="text-end">{t('products.vat_rate')}</TableHead>
@@ -81,40 +95,49 @@ export default function ProductsIndex({ products, categories, canManage }: Produ
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {products.map((product) => (
-                                    <TableRow key={product.id}>
-                                        <TableCell className="font-medium">{product.name_ar}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">{catName(product.product_category_id)}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-end tabular-nums">{product.size_cm ?? '—'}</TableCell>
-                                        <TableCell className="text-end tabular-nums">{fmtPrice(product.default_price)}</TableCell>
-                                        <TableCell className="text-muted-foreground text-end tabular-nums">
-                                            {product.vat_rate ?? t('products.vat_default')}
-                                        </TableCell>
-                                        <TableCell>
-                                            <ActiveBadge active={product.active} />
-                                        </TableCell>
-                                        {canManage && (
-                                            <TableCell className="text-end">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-8"
-                                                        onClick={() => {
-                                                            setEditing(product);
-                                                            setOpen(true);
-                                                        }}
-                                                    >
-                                                        <Pencil className="size-4" />
-                                                        <span className="sr-only">{t('common.edit')}</span>
-                                                    </Button>
-                                                    <ConfirmDelete url={route('products.destroy', product.id)} />
-                                                </div>
+                                {grouped.map(([categoryId, items]) => (
+                                    <Fragment key={categoryId ?? 'none'}>
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableCell colSpan={canManage ? 6 : 5} className="py-2">
+                                                <span className="font-semibold">{catName(categoryId)}</span>
+                                                <Badge variant="outline" className="ms-2 tabular-nums">
+                                                    {items.length}
+                                                </Badge>
                                             </TableCell>
-                                        )}
-                                    </TableRow>
+                                        </TableRow>
+                                        {items.map((product) => (
+                                            <TableRow key={product.id}>
+                                                <TableCell className="font-medium">{product.name_ar}</TableCell>
+                                                <TableCell className="text-end tabular-nums">{product.size_cm ?? '—'}</TableCell>
+                                                <TableCell className="text-end tabular-nums">{fmtPrice(product.default_price)}</TableCell>
+                                                <TableCell className="text-muted-foreground text-end tabular-nums">
+                                                    {product.vat_rate ?? t('products.vat_default')}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <ActiveBadge active={product.active} />
+                                                </TableCell>
+                                                {canManage && (
+                                                    <TableCell className="text-end">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-8"
+                                                                onClick={() => {
+                                                                    setEditing(product);
+                                                                    setOpen(true);
+                                                                }}
+                                                            >
+                                                                <Pencil className="size-4" />
+                                                                <span className="sr-only">{t('common.edit')}</span>
+                                                            </Button>
+                                                            <ConfirmDelete url={route('products.destroy', product.id)} />
+                                                        </div>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        ))}
+                                    </Fragment>
                                 ))}
                             </TableBody>
                         </Table>

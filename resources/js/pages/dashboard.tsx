@@ -16,6 +16,8 @@ import {
     PiggyBank,
     Scale,
     ShieldAlert,
+    TrendingDown,
+    TrendingUp,
     Truck,
     Wallet,
     type LucideIcon,
@@ -36,6 +38,16 @@ interface AttentionItem {
     tone: 'red' | 'amber' | 'blue';
 }
 
+interface MonthAnalysis {
+    month_sales: string;
+    delta_pct: number | null;
+    month_collections: string;
+    month_expenses: string;
+    month_net: string;
+    top_products: { name: string; qty: number; amount: string }[];
+    top_customers: { name: string; amount: string }[];
+}
+
 interface DashboardProps {
     money: {
         trend: TrendPoint[];
@@ -49,10 +61,11 @@ interface DashboardProps {
         cash_box: string;
     } | null;
     stats: { customers: number; orders_today: number; invoices_today: number };
+    analysis: MonthAnalysis | null;
     attention: AttentionItem[] | null;
 }
 
-export default function Dashboard({ money, stats, attention }: DashboardProps) {
+export default function Dashboard({ money, stats, analysis, attention }: DashboardProps) {
     const { t } = useTrans();
     const can = useCan();
 
@@ -77,6 +90,8 @@ export default function Dashboard({ money, stats, attention }: DashboardProps) {
                         </div>
 
                         {attention !== null && <AttentionPanel items={attention} />}
+
+                        {analysis !== null && <MonthAnalysisCard data={analysis} />}
 
                         {/* Today's sales split */}
                         <div>
@@ -176,6 +191,109 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
                     })}
                 </ul>
             )}
+        </div>
+    );
+}
+
+/**
+ * The month in one card: four plain numbers (with a same-days-last-month
+ * compare on sales) and the top-3 products and customers, linking to the
+ * full reports page for anything deeper.
+ */
+function MonthAnalysisCard({ data }: { data: MonthAnalysis }) {
+    const { t } = useTrans();
+    const net = parseFloat(data.month_net);
+    const delta = data.delta_pct;
+
+    return (
+        <div className="rounded-xl border">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+                <h2 className="text-sm font-semibold">{t('dashboard.analysis')}</h2>
+                <Link href="/reports" className="text-primary text-xs font-medium hover:underline">
+                    {t('dashboard.full_report')}
+                </Link>
+            </div>
+
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <div className="text-2xl font-bold tabular-nums">{fmtAmount(data.month_sales)}</div>
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                        {t('dashboard.month_sales')} ({t('common.currency')})
+                    </div>
+                    {delta !== null && (
+                        <div
+                            className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+                                delta >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                            }`}
+                        >
+                            {delta >= 0 ? <TrendingUp className="size-3.5 shrink-0" /> : <TrendingDown className="size-3.5 shrink-0" />}
+                            <span className="tabular-nums">{fmtInt(Math.abs(delta))}%</span>
+                            <span className="text-muted-foreground font-normal">{t('dashboard.vs_prev')}</span>
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <div className="text-2xl font-bold tabular-nums">{fmtAmount(data.month_collections)}</div>
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                        {t('dashboard.month_collections')} ({t('common.currency')})
+                    </div>
+                </div>
+                <div>
+                    <div className="text-2xl font-bold tabular-nums">{fmtAmount(data.month_expenses)}</div>
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                        {t('dashboard.month_expenses')} ({t('common.currency')})
+                    </div>
+                </div>
+                <div>
+                    <div
+                        className={`text-2xl font-bold tabular-nums ${net >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+                    >
+                        {fmtAmount(data.month_net)}
+                    </div>
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                        {t('dashboard.month_net')} ({t('common.currency')})
+                    </div>
+                </div>
+            </div>
+
+            {(data.top_products.length > 0 || data.top_customers.length > 0) && (
+                <div className="grid gap-4 border-t p-4 sm:grid-cols-2">
+                    <TopList
+                        title={t('dashboard.top_products')}
+                        rows={data.top_products.map((p) => ({
+                            name: p.name,
+                            meta: `${fmtInt(p.qty)} ${t('dashboard.qty_units')}`,
+                            amount: p.amount,
+                        }))}
+                    />
+                    <TopList title={t('dashboard.top_customers')} rows={data.top_customers.map((c) => ({ name: c.name, amount: c.amount }))} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function TopList({ title, rows }: { title: string; rows: { name: string; meta?: string; amount: string }[] }) {
+    const { t } = useTrans();
+    if (rows.length === 0) return null;
+
+    return (
+        <div>
+            <h3 className="text-muted-foreground mb-2 text-xs font-medium">{title}</h3>
+            <ol className="flex flex-col gap-1.5">
+                {rows.map((row, i) => (
+                    <li key={row.name} className="flex items-center gap-2 text-sm">
+                        <span className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums">
+                            {fmtInt(i + 1)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
+                        {row.meta && <span className="text-muted-foreground shrink-0 text-xs tabular-nums">{row.meta}</span>}
+                        <span className="shrink-0 text-sm font-semibold tabular-nums">
+                            {fmtAmount(row.amount)} <span className="text-muted-foreground text-xs font-normal">{t('common.currency')}</span>
+                        </span>
+                    </li>
+                ))}
+            </ol>
         </div>
     );
 }

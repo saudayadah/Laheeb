@@ -14,6 +14,7 @@ use App\Support\AppSettings;
 use App\Support\Money;
 use App\Support\VatMath;
 use App\Support\ZatcaQr;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -506,8 +507,11 @@ class InvoiceService
                 'created_by' => $user->id,
             ]);
 
+            // buildLines targets invoice_lines; credit_note_lines carries no
+            // description column, and seeders run unguarded so fillable would
+            // not strip it there — drop it explicitly.
             $note->lines()->createMany(array_map(fn ($line, $i) => [
-                ...$line,
+                ...Arr::except($line, 'description'),
                 'condition' => $items[$i]['condition'] ?? 'good',
             ], $built['lines'], array_keys($built['lines'])));
 
