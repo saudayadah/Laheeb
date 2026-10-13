@@ -14,6 +14,7 @@ deployment:
     - '[ -f "$APPDIR/.env" ] && cd "$APPDIR" && $PHP_BIN artisan view:cache || true'
     # Sync the web root WITHOUT clobbering the live index.php, then swap the
     # re-pointed index.php into place atomically (no broken-request window).
-    - rsync -a --exclude=index.php "$APPDIR/public/" /home/laheebsa/public_html/
+    # tar instead of rsync: rsync is not installed on this host.
+    - cd "$APPDIR/public" && tar cf - --exclude=./index.php . | tar xf - -C /home/laheebsa/public_html/
     - sed "s|__DIR__\.'/\.\./|'/home/laheebsa/repositories/Laheeb/|g" "$APPDIR/public/index.php" > /home/laheebsa/public_html/.index.php.tmp
     - mv -f /home/laheebsa/public_html/.index.php.tmp /home/laheebsa/public_html/index.php
